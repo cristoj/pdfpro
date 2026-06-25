@@ -671,6 +671,7 @@ html, body {
   min-width: 20px;
   min-height: 10px;
   color: #000;
+  line-height: normal;
 }
 
 .text-block:hover {

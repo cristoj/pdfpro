@@ -46,7 +46,7 @@ router.get('/text/:sessionId', async (req, res, next) => {
 
 router.post('/text/add', async (req, res, next) => {
   try {
-    const { sessionId, pageIndex, x, y, text, fontSize, fontFamily, bold, italic } = req.body
+    const { sessionId, pageIndex, x, y, text, fontSize, fontFamily, bold, italic, color } = req.body
     const session = getSession(sessionId)
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
 
@@ -60,6 +60,7 @@ router.post('/text/add', async (req, res, next) => {
       fontFamily: fontFamily || 'Helvetica',
       bold: Boolean(bold),
       italic: Boolean(italic),
+      color: color || '#000000',
     }
 
     updateSession(sessionId, { textBlocks: [...(session.textBlocks ?? []), block] })
@@ -71,7 +72,7 @@ router.post('/text/add', async (req, res, next) => {
 
 router.put('/text/:id', async (req, res, next) => {
   try {
-    const { sessionId, text, fontSize, fontFamily, bold, italic, x, y } = req.body
+    const { sessionId, text, fontSize, fontFamily, bold, italic, color, x, y } = req.body
     const session = getSession(sessionId)
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
 
@@ -85,6 +86,7 @@ router.put('/text/:id', async (req, res, next) => {
     if (fontFamily !== undefined) patch.fontFamily = fontFamily
     if (bold !== undefined) patch.bold = Boolean(bold)
     if (italic !== undefined) patch.italic = Boolean(italic)
+    if (color !== undefined) patch.color = color
     if (x !== undefined) patch.x = Number(x)
     if (y !== undefined) patch.y = Number(y)
 

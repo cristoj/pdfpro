@@ -18,11 +18,11 @@ const state = {
   // Edit mode
   editMode: false,
   activeTool: 'select',       // 'select' | 'addText'
-  textBlocks: [],              // { id, pageIndex, x, y, text, fontSize, fontFamily, bold, italic }
+  textBlocks: [],              // { id, pageIndex, x, y, text, fontSize, fontFamily, bold, italic, color }
   selectedBlockId: null,
   pageWidthPt: 0,
   pageHeightPt: 0,
-  typography: { fontFamily: 'Helvetica', fontSize: 14, bold: false, italic: false },
+  typography: { fontFamily: 'Helvetica', fontSize: 14, bold: false, italic: false, color: '#000000' },
 }
 
 // ── PDF.js ───────────────────────────────────────────────────
@@ -74,6 +74,7 @@ const fontFamilySelect = $('font-family-select')
 const fontSizeInput = $('font-size-input')
 const btnBold = $('btn-bold')
 const btnItalic = $('btn-italic')
+const fontColorInput = $('font-color-input')
 const btnDeleteBlock = $('btn-delete-block')
 const btnEdit = $('btn-edit')
 
@@ -552,6 +553,7 @@ function syncTypographyUI() {
   fontSizeInput.value = state.typography.fontSize
   btnBold.classList.toggle('tool-btn--active', state.typography.bold)
   btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
+  fontColorInput.value = state.typography.color ?? '#000000'
 }
 
 fontFamilySelect.addEventListener('change', () => {
@@ -572,6 +574,10 @@ btnItalic.addEventListener('click', () => {
   btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
   applyTypographyToSelected()
 })
+fontColorInput.addEventListener('input', () => {
+  state.typography.color = fontColorInput.value
+  applyTypographyToSelected()
+})
 
 function applyTypographyToSelected() {
   if (!state.selectedBlockId) return
@@ -582,6 +588,7 @@ function applyTypographyToSelected() {
     fontSize: state.typography.fontSize,
     bold: state.typography.bold,
     italic: state.typography.italic,
+    color: state.typography.color,
   })
   rerenderTextBlock(block)
   if (state.sessionId) {
@@ -590,6 +597,7 @@ function applyTypographyToSelected() {
       fontSize: block.fontSize,
       bold: block.bold,
       italic: block.italic,
+      color: block.color,
     }).catch(() => {})
   }
 }
@@ -617,7 +625,8 @@ function overlayCoordsToPdf(left, top) {
 function blockCssStyle(block) {
   const { left, top } = pdfCoordsToOverlay(block.x, block.y)
   const fontFamily = CSS_FONTS[block.fontFamily] ?? CSS_FONTS.Helvetica
-  return `left:${left}px;top:${top}px;font-size:${block.fontSize * state.zoom}px;font-family:${fontFamily};font-weight:${block.bold ? 700 : 400};font-style:${block.italic ? 'italic' : 'normal'};`
+  const color = block.color ?? '#000000'
+  return `left:${left}px;top:${top}px;font-size:${block.fontSize * state.zoom}px;font-family:${fontFamily};font-weight:${block.bold ? 700 : 400};font-style:${block.italic ? 'italic' : 'normal'};color:${color};`
 }
 
 function renderTextOverlay() {
@@ -719,6 +728,7 @@ function selectTextBlock(id) {
       fontSize: block.fontSize,
       bold: block.bold,
       italic: block.italic,
+      color: block.color ?? '#000000',
     }
     syncTypographyUI()
   }
@@ -803,6 +813,7 @@ textLayer.addEventListener('click', async e => {
           fontFamily: block.fontFamily,
           bold: block.bold,
           italic: block.italic,
+          color: block.color,
         })
         const idx = state.textBlocks.findIndex(b => b.id === tempId)
         if (idx !== -1) {

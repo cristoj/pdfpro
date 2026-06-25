@@ -1,6 +1,15 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import fs from 'node:fs/promises'
 
+function hexToRgb(hex = '#000000') {
+  const h = hex.replace('#', '')
+  return rgb(
+    parseInt(h.slice(0, 2), 16) / 255,
+    parseInt(h.slice(2, 4), 16) / 255,
+    parseInt(h.slice(4, 6), 16) / 255,
+  )
+}
+
 export async function loadPdf(filePath) {
   const bytes = await fs.readFile(filePath)
   return PDFDocument.load(bytes)
@@ -92,7 +101,7 @@ export async function applyTextBlocks(doc, textBlocks) {
       y: block.y,
       size: block.fontSize ?? 14,
       font: await font(block.fontFamily ?? 'Helvetica', block.bold, block.italic),
-      color: rgb(0, 0, 0),
+      color: hexToRgb(block.color),
     })
   }
   return doc

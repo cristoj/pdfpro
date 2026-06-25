@@ -674,6 +674,22 @@ html, body {
   line-height: normal;
 }
 
+.color-picker-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.color-picker-input {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 2px;
+  background: none;
+}
+
 .text-layer.edit-active .text-block {
   cursor: grab;
 }

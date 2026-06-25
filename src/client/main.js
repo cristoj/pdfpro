@@ -702,83 +702,85 @@ btnDeleteBlock.addEventListener('click', () => {
   if (state.selectedBlockId) removeTextBlock(state.selectedBlockId)
 })
 
-// ── Text layer click — add text or deselect ───────────────────
-textLayer.addEventListener('mousedown', async e => {
+// ── Text layer mousedown — deselect al pulsar fondo vacío ─────
+textLayer.addEventListener('mousedown', e => {
   if (!state.editMode) return
+  if (e.target === textLayer) deselectTextBlock()
+})
 
-  if (state.activeTool === 'addText' && e.target === textLayer) {
-    e.preventDefault()
-    const rect = textLayer.getBoundingClientRect()
-    const overlayX = e.clientX - rect.left
-    const overlayY = e.clientY - rect.top
-    const { x, y } = overlayCoordsToPdf(overlayX, overlayY)
+// ── Text layer click — crear bloque de texto ──────────────────
+// 'click' dispara tras mouseup → focus() funciona sin conflictos
+// cross-browser (no necesita preventDefault ni setTimeout).
+textLayer.addEventListener('click', async e => {
+  if (!state.editMode || state.activeTool !== 'addText') return
+  if (e.target !== textLayer) return
 
-    const tempId = `tmp-${Date.now()}`
-    const block = {
-      id: tempId,
-      pageIndex: state.currentPage - 1,
-      x, y,
-      text: '',
-      ...state.typography,
+  const rect = textLayer.getBoundingClientRect()
+  const overlayX = e.clientX - rect.left
+  const overlayY = e.clientY - rect.top
+  const { x, y } = overlayCoordsToPdf(overlayX, overlayY)
+
+  const tempId = `tmp-${Date.now()}`
+  const block = {
+    id: tempId,
+    pageIndex: state.currentPage - 1,
+    x, y,
+    text: '',
+    ...state.typography,
+  }
+  state.textBlocks.push(block)
+  const el = createBlockElement(block)
+  selectTextBlock(tempId)
+
+  const content = el.querySelector('.text-block-content')
+  content.contentEditable = 'true'
+
+  const commit = async () => {
+    content.contentEditable = 'false'
+    const text = content.textContent.trim()
+
+    if (!text) {
+      state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
+      el.remove()
+      deselectTextBlock()
+      return
     }
-    state.textBlocks.push(block)
-    const el = createBlockElement(block)
-    selectTextBlock(tempId)
 
-    const content = el.querySelector('.text-block-content')
-    content.contentEditable = 'true'
-
-    const commit = async () => {
-      content.contentEditable = 'false'
-      const text = content.textContent.trim()
-
-      if (!text) {
+    block.text = text
+    if (state.sessionId) {
+      try {
+        const { block: saved } = await addTextBlock(state.sessionId, {
+          pageIndex: block.pageIndex,
+          x: block.x,
+          y: block.y,
+          text: block.text,
+          fontSize: block.fontSize,
+          fontFamily: block.fontFamily,
+          bold: block.bold,
+          italic: block.italic,
+        })
+        const idx = state.textBlocks.findIndex(b => b.id === tempId)
+        if (idx !== -1) {
+          state.textBlocks[idx] = saved
+          el.dataset.id = saved.id
+          if (state.selectedBlockId === tempId) state.selectedBlockId = saved.id
+        }
+      } catch {
         state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
         el.remove()
-        deselectTextBlock()
-        return
-      }
-
-      block.text = text
-      if (state.sessionId) {
-        try {
-          const { block: saved } = await addTextBlock(state.sessionId, {
-            pageIndex: block.pageIndex,
-            x: block.x,
-            y: block.y,
-            text: block.text,
-            fontSize: block.fontSize,
-            fontFamily: block.fontFamily,
-            bold: block.bold,
-            italic: block.italic,
-          })
-          const idx = state.textBlocks.findIndex(b => b.id === tempId)
-          if (idx !== -1) {
-            state.textBlocks[idx] = saved
-            el.dataset.id = saved.id
-            if (state.selectedBlockId === tempId) state.selectedBlockId = saved.id
-          }
-        } catch {
-          state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
-          el.remove()
-        }
       }
     }
-
-    content.addEventListener('blur', commit, { once: true })
-    content.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        content.textContent = ''
-        content.blur()
-      }
-    })
-
-    // Defer focus so e.preventDefault() no bloquea el foco programático
-    setTimeout(() => content.focus(), 0)
-    return
   }
 
-  if (e.target === textLayer) deselectTextBlock()
+  content.addEventListener('blur', commit, { once: true })
+  content.addEventListener('keydown', ke => {
+    if (ke.key === 'Escape') {
+      content.textContent = ''
+      content.blur()
+    }
+  })
+
+  content.focus()
 })
 
 // ── Existing block edit on dblclick ──────────────────────────

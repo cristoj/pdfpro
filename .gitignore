@@ -5,3 +5,5 @@ uploads/
 coverage/
 playwright-report/
 test-results/
+.vite/
+.claude/settings.local.json

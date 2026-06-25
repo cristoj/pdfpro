@@ -1,3 +1,4 @@
+import Sortable from 'sortablejs'
 import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -52,6 +53,11 @@ const zoomLevel = $('zoom-level')
 const exportPanel = $('export-panel')
 const searchPanel = $('search-panel')
 const searchInput = $('search-input')
+const selectionBar = $('selection-bar')
+const selectionCount = $('selection-count')
+const btnSelectAll = $('btn-select-all')
+const btnDeselect = $('btn-deselect')
+const btnDeleteSelection = $('btn-delete-selection')
 
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
@@ -151,7 +157,7 @@ function renderThumbnailsPlaceholder() {
     thumb.dataset.index = i
     thumb.innerHTML = `
       <span class="page-thumb-handle" title="Arrastrar">⠿</span>
-      <div style="height:${state.thumbnailSize === 'lg' ? 200 : state.thumbnailSize === 'md' ? 140 : 100}px; background:var(--color-surface-2); display:flex; align-items:center; justify-content:center;">
+      <div class="page-thumb-canvas-wrapper">
         <canvas data-page="${i + 1}"></canvas>
       </div>
       <input type="checkbox" class="page-thumb-checkbox" data-index="${i}" />
@@ -168,28 +174,144 @@ function renderThumbnailsPlaceholder() {
     cb.addEventListener('change', () => {
       thumb.classList.toggle('selected', cb.checked)
       state.selection = [...$$('.page-thumb-checkbox:checked')].map(el => Number(el.dataset.index))
+      updateSelectionBar()
     })
 
     pageList.appendChild(thumb)
   }
 
+  initSortable()
   renderThumbnailCanvases()
 }
 
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const thumbWidth = { sm: 80, md: 120, lg: 160 }[state.thumbnailSize]
+  const colW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
+  const colH = Math.round(colW * 297 / 210) // ratio A4 exacto
 
   for (const canvasEl of thumbs) {
     const pageNum = Number(canvasEl.dataset.page)
     const page = await state.pdfDoc.getPage(pageNum)
-    const viewport = page.getViewport({ scale: thumbWidth / page.getViewport({ scale: 1 }).width })
-    canvasEl.width = viewport.width
-    canvasEl.height = viewport.height
+    const baseVp = page.getViewport({ scale: 1 })
+    // Scale para que la página quepa dentro del box A4 sin distorsionarse
+    const scale = Math.min(colW / baseVp.width, colH / baseVp.height)
+    const viewport = page.getViewport({ scale })
+
+    // Renderizar a canvas temporal al tamaño real de la página
+    const tmp = document.createElement('canvas')
+    tmp.width = Math.round(viewport.width)
+    tmp.height = Math.round(viewport.height)
+    await page.render({ canvasContext: tmp.getContext('2d'), viewport }).promise
+
+    // Copiar centrado sobre canvas A4 (letterbox/pillarbox para páginas no A4)
+    canvasEl.width = colW
+    canvasEl.height = colH
     const ctx = canvasEl.getContext('2d')
-    await page.render({ canvasContext: ctx, viewport }).promise
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, colW, colH)
+    ctx.drawImage(tmp, Math.round((colW - tmp.width) / 2), Math.round((colH - tmp.height) / 2))
   }
+}
+
+// ── Selection bar ─────────────────────────────────────────────
+function updateSelectionBar() {
+  const n = state.selection.length
+  if (n === 0) {
+    selectionBar.style.display = 'none'
+    return
+  }
+  selectionBar.style.display = 'flex'
+  selectionCount.textContent = `${n} página${n !== 1 ? 's' : ''} seleccionada${n !== 1 ? 's' : ''}`
+}
+
+function selectAll() {
+  state.selection = Array.from({ length: state.totalPages }, (_, i) => i)
+  $$('.page-thumb-checkbox').forEach(cb => {
+    cb.checked = true
+    cb.closest('.page-thumb').classList.add('selected')
+  })
+  updateSelectionBar()
+}
+
+function deselectAll() {
+  state.selection = []
+  $$('.page-thumb-checkbox').forEach(cb => {
+    cb.checked = false
+    cb.closest('.page-thumb').classList.remove('selected')
+  })
+  updateSelectionBar()
+}
+
+async function deleteSelection() {
+  if (!state.sessionId || !state.selection.length) return
+  if (!confirm(`¿Eliminar ${state.selection.length} página${state.selection.length !== 1 ? 's' : ''}?`)) return
+
+  try {
+    setLoading(true)
+    const data = await deletePagesByIndex(state.sessionId, [...state.selection])
+    state.pages = data.pages
+    state.selection = []
+    state.currentPage = Math.min(state.currentPage, data.pages.length)
+
+    await reloadPdfDoc()
+    renderThumbnailsPlaceholder()
+    await renderPage(state.currentPage)
+    updatePageControls()
+    updateSelectionBar()
+  } catch (err) {
+    alert(`Error al eliminar páginas: ${err.message}`)
+  } finally {
+    setLoading(false)
+  }
+}
+
+btnSelectAll.addEventListener('click', selectAll)
+btnDeselect.addEventListener('click', deselectAll)
+btnDeleteSelection.addEventListener('click', deleteSelection)
+
+// ── Reload PDF from server after mutations ─────────────────────
+async function reloadPdfDoc() {
+  const blob = await exportPdf(state.sessionId, null)
+  const arrayBuffer = await blob.arrayBuffer()
+  const lib = await loadPdfJs()
+  state.pdfDoc = await lib.getDocument({ data: arrayBuffer }).promise
+  state.totalPages = state.pdfDoc.numPages
+}
+
+// ── SortableJS ─────────────────────────────────────────────────
+let sortable = null
+
+function initSortable() {
+  if (sortable) sortable.destroy()
+  sortable = new Sortable(pageList, {
+    animation: 150,
+    handle: '.page-thumb-handle',
+    ghostClass: 'page-thumb--ghost',
+    chosenClass: 'page-thumb--chosen',
+    onEnd: async ({ oldIndex, newIndex }) => {
+      if (oldIndex === newIndex || !state.sessionId) return
+
+      const order = Array.from({ length: state.totalPages }, (_, i) => i)
+      order.splice(newIndex, 0, order.splice(oldIndex, 1)[0])
+
+      try {
+        setLoading(true)
+        const data = await reorderPages(state.sessionId, order)
+        state.pages = data.pages
+
+        await reloadPdfDoc()
+        renderThumbnailsPlaceholder()
+        await renderPage(state.currentPage)
+        updatePageControls()
+      } catch (err) {
+        alert(`Error al reordenar: ${err.message}`)
+        renderThumbnailsPlaceholder()
+      } finally {
+        setLoading(false)
+      }
+    },
+  })
 }
 
 // ── Navigation ───────────────────────────────────────────────
@@ -324,7 +446,39 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigateTo(state.currentPage + 1)
 })
 
+// ── Sidebar resize ────────────────────────────────────────────
+const sidebarEl = $('sidebar')
+const sidebarResizeHandle = $('sidebar-resize')
+
+let _resizing = false
+let _resizeStartX = 0
+let _resizeStartW = 0
+
+sidebarResizeHandle.addEventListener('mousedown', e => {
+  _resizing = true
+  _resizeStartX = e.clientX
+  _resizeStartW = sidebarEl.offsetWidth
+  sidebarResizeHandle.classList.add('sidebar-resize--active')
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+})
+
+document.addEventListener('mousemove', e => {
+  if (!_resizing) return
+  const maxW = Math.floor(window.innerWidth * 0.8)
+  const w = Math.max(160, Math.min(maxW, _resizeStartW + e.clientX - _resizeStartX))
+  sidebarEl.style.width = `${w}px`
+})
+
+document.addEventListener('mouseup', () => {
+  if (!_resizing) return
+  _resizing = false
+  sidebarResizeHandle.classList.remove('sidebar-resize--active')
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+})
+
 // ── Loading ───────────────────────────────────────────────────
 function setLoading(on) {
-  document.body.style.cursor = on ? 'wait' : ''
+  document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
 }

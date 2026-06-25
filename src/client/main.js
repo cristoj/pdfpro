@@ -521,7 +521,6 @@ function setLoading(on) {
 // ── Edit mode ─────────────────────────────────────────────────
 function setEditMode(on) {
   state.editMode = on
-  console.log('[PDFPro] editMode →', on)
   editToolbar.style.display = on ? 'flex' : 'none'
   btnEdit.classList.toggle('toolbar-btn--active', on)
   textLayer.classList.toggle('edit-active', on)
@@ -705,10 +704,10 @@ btnDeleteBlock.addEventListener('click', () => {
 
 // ── Text layer click — add text or deselect ───────────────────
 textLayer.addEventListener('mousedown', async e => {
-  console.log('[PDFPro] textLayer mousedown', { editMode: state.editMode, tool: state.activeTool, targetId: e.target.id, targetClass: e.target.className, isTextLayer: e.target === textLayer })
   if (!state.editMode) return
 
   if (state.activeTool === 'addText' && e.target === textLayer) {
+    e.preventDefault()
     const rect = textLayer.getBoundingClientRect()
     const overlayX = e.clientX - rect.left
     const overlayY = e.clientY - rect.top

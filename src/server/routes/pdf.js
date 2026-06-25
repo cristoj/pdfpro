@@ -2,7 +2,7 @@ import { Router } from 'express'
 import fs from 'node:fs/promises'
 import { upload } from '../middleware/upload.js'
 import { createSession, getSession, updateSession } from '../services/sessionService.js'
-import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages } from '../services/pdfService.js'
+import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks } from '../services/pdfService.js'
 import { parseRange } from '../../shared/pageRange.js'
 
 const router = Router()
@@ -77,6 +77,15 @@ router.post('/export', async (req, res, next) => {
     }
 
     const exportDoc = await extractPages(doc, indices)
+
+    if (session.textBlocks?.length) {
+      const indexMap = new Map(indices.map((orig, pos) => [orig, pos]))
+      const blocks = session.textBlocks
+        .filter(b => indexMap.has(b.pageIndex))
+        .map(b => ({ ...b, pageIndex: indexMap.get(b.pageIndex) }))
+      await applyTextBlocks(exportDoc, blocks)
+    }
+
     const bytes = await exportDoc.save()
 
     res.setHeader('Content-Type', 'application/pdf')

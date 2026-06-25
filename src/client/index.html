@@ -110,6 +110,36 @@
 
       <!-- VIEWER -->
       <main id="viewer" class="viewer">
+
+        <!-- EDIT TOOLBAR -->
+        <div id="edit-toolbar" class="edit-toolbar" style="display:none">
+          <div class="tool-group">
+            <button id="tool-select" class="tool-btn tool-btn--active" title="Seleccionar (V)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l14 9-7 2-4 6z"/></svg>
+              Seleccionar
+            </button>
+            <button id="tool-add-text" class="tool-btn" title="Añadir texto (T)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+              Añadir Texto
+            </button>
+          </div>
+          <div class="tool-sep"></div>
+          <div class="tool-group">
+            <select id="font-family-select" class="font-select" title="Fuente">
+              <option value="Helvetica">Geist Sans</option>
+              <option value="Courier">JetBrains Mono</option>
+            </select>
+            <input id="font-size-input" type="number" class="font-size-input" value="14" min="6" max="144" step="1" title="Tamaño (pt)" />
+            <button id="btn-bold" class="tool-btn" title="Negrita"><b>B</b></button>
+            <button id="btn-italic" class="tool-btn" title="Cursiva"><i>I</i></button>
+          </div>
+          <div class="tool-sep"></div>
+          <button id="btn-delete-block" class="tool-btn tool-btn--danger" title="Eliminar bloque seleccionado" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Eliminar bloque
+          </button>
+        </div>
+
         <div id="drop-zone" class="drop-zone">
           <div class="drop-zone-content">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -120,8 +150,10 @@
         </div>
 
         <div id="pdf-canvas-wrapper" class="pdf-canvas-wrapper" style="display:none">
-          <canvas id="pdf-canvas"></canvas>
-          <div id="text-layer" class="text-layer"></div>
+          <div id="canvas-container" class="canvas-container">
+            <canvas id="pdf-canvas"></canvas>
+            <div id="text-layer" class="text-layer"></div>
+          </div>
         </div>
 
         <!-- VIEWER CONTROLS -->

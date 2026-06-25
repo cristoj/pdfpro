@@ -63,3 +63,15 @@ export async function exportPdf(sessionId, range) {
 export async function compressPdf(sessionId) {
   return request('POST', '/compress', { sessionId })
 }
+
+export async function addTextBlock(sessionId, block) {
+  return request('POST', '/text/add', { sessionId, ...block })
+}
+
+export async function updateTextBlock(sessionId, id, changes) {
+  return request('PUT', `/text/${id}`, { sessionId, ...changes })
+}
+
+export async function deleteTextBlock(sessionId, id) {
+  return request('DELETE', `/text/${id}`, { sessionId })
+}

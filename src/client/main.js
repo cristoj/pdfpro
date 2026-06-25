@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, addTextBlock, updateTextBlock, deleteTextBlock } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -15,6 +15,14 @@ const state = {
   darkMode: localStorage.getItem('pdfpro_dark') === 'true',
   selection: [],
   pdfDoc: null,
+  // Edit mode
+  editMode: false,
+  activeTool: 'select',       // 'select' | 'addText'
+  textBlocks: [],              // { id, pageIndex, x, y, text, fontSize, fontFamily, bold, italic }
+  selectedBlockId: null,
+  pageWidthPt: 0,
+  pageHeightPt: 0,
+  typography: { fontFamily: 'Helvetica', fontSize: 14, bold: false, italic: false },
 }
 
 // ── PDF.js ───────────────────────────────────────────────────
@@ -58,6 +66,16 @@ const selectionCount = $('selection-count')
 const btnSelectAll = $('btn-select-all')
 const btnDeselect = $('btn-deselect')
 const btnDeleteSelection = $('btn-delete-selection')
+const editToolbar = $('edit-toolbar')
+const textLayer = $('text-layer')
+const toolSelectBtn = $('tool-select')
+const toolAddTextBtn = $('tool-add-text')
+const fontFamilySelect = $('font-family-select')
+const fontSizeInput = $('font-size-input')
+const btnBold = $('btn-bold')
+const btnItalic = $('btn-italic')
+const btnDeleteBlock = $('btn-delete-block')
+const btnEdit = $('btn-edit')
 
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
@@ -126,8 +144,11 @@ async function loadAndRenderPdf(file) {
 async function renderPage(pageNum) {
   if (!state.pdfDoc) return
   const page = await state.pdfDoc.getPage(pageNum)
-  const viewport = page.getViewport({ scale: state.zoom })
+  const baseVp = page.getViewport({ scale: 1 })
+  state.pageWidthPt = baseVp.width
+  state.pageHeightPt = baseVp.height
 
+  const viewport = page.getViewport({ scale: state.zoom })
   pdfCanvas.width = viewport.width
   pdfCanvas.height = viewport.height
 
@@ -136,6 +157,7 @@ async function renderPage(pageNum) {
 
   currentPageInput.value = pageNum
   state.currentPage = pageNum
+  renderTextOverlay()
 }
 
 // ── Show/hide viewer ─────────────────────────────────────────
@@ -482,3 +504,288 @@ document.addEventListener('mouseup', () => {
 function setLoading(on) {
   document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
 }
+
+// ── Edit mode ─────────────────────────────────────────────────
+function setEditMode(on) {
+  state.editMode = on
+  editToolbar.style.display = on ? 'flex' : 'none'
+  btnEdit.classList.toggle('toolbar-btn--active', on)
+  textLayer.classList.toggle('edit-active', on)
+  if (!on) {
+    deselectTextBlock()
+    setActiveTool('select')
+  }
+}
+
+function setActiveTool(tool) {
+  state.activeTool = tool
+  toolSelectBtn.classList.toggle('tool-btn--active', tool === 'select')
+  toolAddTextBtn.classList.toggle('tool-btn--active', tool === 'addText')
+  textLayer.classList.toggle('add-text-cursor', tool === 'addText')
+}
+
+btnEdit.addEventListener('click', () => setEditMode(!state.editMode))
+toolSelectBtn.addEventListener('click', () => setActiveTool('select'))
+toolAddTextBtn.addEventListener('click', () => setActiveTool('addText'))
+
+// ── Typography controls ───────────────────────────────────────
+function syncTypographyUI() {
+  fontFamilySelect.value = state.typography.fontFamily
+  fontSizeInput.value = state.typography.fontSize
+  btnBold.classList.toggle('tool-btn--active', state.typography.bold)
+  btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
+}
+
+fontFamilySelect.addEventListener('change', () => {
+  state.typography.fontFamily = fontFamilySelect.value
+  applyTypographyToSelected()
+})
+fontSizeInput.addEventListener('change', () => {
+  state.typography.fontSize = Number(fontSizeInput.value) || 14
+  applyTypographyToSelected()
+})
+btnBold.addEventListener('click', () => {
+  state.typography.bold = !state.typography.bold
+  btnBold.classList.toggle('tool-btn--active', state.typography.bold)
+  applyTypographyToSelected()
+})
+btnItalic.addEventListener('click', () => {
+  state.typography.italic = !state.typography.italic
+  btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
+  applyTypographyToSelected()
+})
+
+function applyTypographyToSelected() {
+  if (!state.selectedBlockId) return
+  const block = state.textBlocks.find(b => b.id === state.selectedBlockId)
+  if (!block) return
+  Object.assign(block, {
+    fontFamily: state.typography.fontFamily,
+    fontSize: state.typography.fontSize,
+    bold: state.typography.bold,
+    italic: state.typography.italic,
+  })
+  rerenderTextBlock(block)
+  if (state.sessionId) {
+    updateTextBlock(state.sessionId, block.id, {
+      fontFamily: block.fontFamily,
+      fontSize: block.fontSize,
+      bold: block.bold,
+      italic: block.italic,
+    }).catch(() => {})
+  }
+}
+
+// ── Text overlay ──────────────────────────────────────────────
+const CSS_FONTS = {
+  Helvetica: "'Geist Sans', Helvetica, Arial, sans-serif",
+  Courier: "'JetBrains Mono', 'Courier New', monospace",
+}
+
+function pdfCoordsToOverlay(x, y) {
+  return {
+    left: x * state.zoom,
+    top: (state.pageHeightPt - y) * state.zoom,
+  }
+}
+
+function overlayCoordsToPdf(left, top) {
+  return {
+    x: left / state.zoom,
+    y: state.pageHeightPt - top / state.zoom,
+  }
+}
+
+function blockCssStyle(block) {
+  const { left, top } = pdfCoordsToOverlay(block.x, block.y)
+  const fontFamily = CSS_FONTS[block.fontFamily] ?? CSS_FONTS.Helvetica
+  return `left:${left}px;top:${top}px;font-size:${block.fontSize * state.zoom}px;font-family:${fontFamily};font-weight:${block.bold ? 700 : 400};font-style:${block.italic ? 'italic' : 'normal'};`
+}
+
+function renderTextOverlay() {
+  textLayer.innerHTML = ''
+  const pageIdx = state.currentPage - 1
+  state.textBlocks.filter(b => b.pageIndex === pageIdx).forEach(block => {
+    createBlockElement(block)
+  })
+}
+
+function createBlockElement(block) {
+  const el = document.createElement('div')
+  el.className = 'text-block'
+  el.dataset.id = block.id
+  el.setAttribute('style', blockCssStyle(block))
+
+  const content = document.createElement('div')
+  content.className = 'text-block-content'
+  content.textContent = block.text
+
+  const delBtn = document.createElement('button')
+  delBtn.className = 'text-block-del'
+  delBtn.textContent = '✕'
+  delBtn.title = 'Eliminar bloque'
+  delBtn.addEventListener('mousedown', e => {
+    e.stopPropagation()
+    removeTextBlock(block.id)
+  })
+
+  el.appendChild(content)
+  el.appendChild(delBtn)
+
+  el.addEventListener('mousedown', e => {
+    if (!state.editMode) return
+    e.stopPropagation()
+    selectTextBlock(block.id)
+  })
+
+  textLayer.appendChild(el)
+  return el
+}
+
+function rerenderTextBlock(block) {
+  const el = textLayer.querySelector(`[data-id="${block.id}"]`)
+  if (!el) return
+  el.setAttribute('style', blockCssStyle(block))
+}
+
+function selectTextBlock(id) {
+  deselectTextBlock()
+  state.selectedBlockId = id
+  const el = textLayer.querySelector(`[data-id="${id}"]`)
+  if (el) el.classList.add('text-block--selected')
+
+  const block = state.textBlocks.find(b => b.id === id)
+  if (block) {
+    state.typography = {
+      fontFamily: block.fontFamily,
+      fontSize: block.fontSize,
+      bold: block.bold,
+      italic: block.italic,
+    }
+    syncTypographyUI()
+  }
+  btnDeleteBlock.style.display = 'flex'
+}
+
+function deselectTextBlock() {
+  if (state.selectedBlockId) {
+    const el = textLayer.querySelector(`[data-id="${state.selectedBlockId}"]`)
+    if (el) el.classList.remove('text-block--selected')
+  }
+  state.selectedBlockId = null
+  btnDeleteBlock.style.display = 'none'
+}
+
+async function removeTextBlock(id) {
+  state.textBlocks = state.textBlocks.filter(b => b.id !== id)
+  if (state.selectedBlockId === id) deselectTextBlock()
+  renderTextOverlay()
+  if (state.sessionId) {
+    await deleteTextBlock(state.sessionId, id).catch(() => {})
+  }
+}
+
+btnDeleteBlock.addEventListener('click', () => {
+  if (state.selectedBlockId) removeTextBlock(state.selectedBlockId)
+})
+
+// ── Text layer click — add text or deselect ───────────────────
+textLayer.addEventListener('mousedown', async e => {
+  if (!state.editMode) return
+
+  if (state.activeTool === 'addText' && e.target === textLayer) {
+    const rect = textLayer.getBoundingClientRect()
+    const overlayX = e.clientX - rect.left
+    const overlayY = e.clientY - rect.top
+    const { x, y } = overlayCoordsToPdf(overlayX, overlayY)
+
+    const tempId = `tmp-${Date.now()}`
+    const block = {
+      id: tempId,
+      pageIndex: state.currentPage - 1,
+      x, y,
+      text: '',
+      ...state.typography,
+    }
+    state.textBlocks.push(block)
+    const el = createBlockElement(block)
+    selectTextBlock(tempId)
+
+    const content = el.querySelector('.text-block-content')
+    content.contentEditable = 'true'
+    content.focus()
+
+    const commit = async () => {
+      content.contentEditable = 'false'
+      const text = content.textContent.trim()
+
+      if (!text) {
+        state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
+        el.remove()
+        deselectTextBlock()
+        return
+      }
+
+      block.text = text
+      if (state.sessionId) {
+        try {
+          const { block: saved } = await addTextBlock(state.sessionId, {
+            pageIndex: block.pageIndex,
+            x: block.x,
+            y: block.y,
+            text: block.text,
+            fontSize: block.fontSize,
+            fontFamily: block.fontFamily,
+            bold: block.bold,
+            italic: block.italic,
+          })
+          const idx = state.textBlocks.findIndex(b => b.id === tempId)
+          if (idx !== -1) {
+            state.textBlocks[idx] = saved
+            el.dataset.id = saved.id
+            if (state.selectedBlockId === tempId) state.selectedBlockId = saved.id
+          }
+        } catch {
+          state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
+          el.remove()
+        }
+      }
+    }
+
+    content.addEventListener('blur', commit, { once: true })
+    content.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        content.textContent = ''
+        content.blur()
+      }
+    })
+    return
+  }
+
+  if (e.target === textLayer) deselectTextBlock()
+})
+
+// ── Existing block edit on dblclick ──────────────────────────
+textLayer.addEventListener('dblclick', e => {
+  if (!state.editMode) return
+  const blockEl = e.target.closest('.text-block')
+  if (!blockEl) return
+  const id = blockEl.dataset.id
+  const block = state.textBlocks.find(b => b.id === id)
+  if (!block) return
+
+  const content = blockEl.querySelector('.text-block-content')
+  content.contentEditable = 'true'
+  content.focus()
+
+  const commit = async () => {
+    content.contentEditable = 'false'
+    const text = content.textContent
+    if (text === block.text) return
+    block.text = text
+    if (state.sessionId) {
+      await updateTextBlock(state.sessionId, id, { text }).catch(() => {})
+    }
+  }
+  content.addEventListener('blur', commit, { once: true })
+})

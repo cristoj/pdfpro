@@ -1,3 +1,4 @@
+import Sortable from 'sortablejs'
 import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -52,6 +53,11 @@ const zoomLevel = $('zoom-level')
 const exportPanel = $('export-panel')
 const searchPanel = $('search-panel')
 const searchInput = $('search-input')
+const selectionBar = $('selection-bar')
+const selectionCount = $('selection-count')
+const btnSelectAll = $('btn-select-all')
+const btnDeselect = $('btn-deselect')
+const btnDeleteSelection = $('btn-delete-selection')
 
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
@@ -168,11 +174,13 @@ function renderThumbnailsPlaceholder() {
     cb.addEventListener('change', () => {
       thumb.classList.toggle('selected', cb.checked)
       state.selection = [...$$('.page-thumb-checkbox:checked')].map(el => Number(el.dataset.index))
+      updateSelectionBar()
     })
 
     pageList.appendChild(thumb)
   }
 
+  initSortable()
   renderThumbnailCanvases()
 }
 
@@ -190,6 +198,106 @@ async function renderThumbnailCanvases() {
     const ctx = canvasEl.getContext('2d')
     await page.render({ canvasContext: ctx, viewport }).promise
   }
+}
+
+// ── Selection bar ─────────────────────────────────────────────
+function updateSelectionBar() {
+  const n = state.selection.length
+  if (n === 0) {
+    selectionBar.style.display = 'none'
+    return
+  }
+  selectionBar.style.display = 'flex'
+  selectionCount.textContent = `${n} página${n !== 1 ? 's' : ''} seleccionada${n !== 1 ? 's' : ''}`
+}
+
+function selectAll() {
+  state.selection = Array.from({ length: state.totalPages }, (_, i) => i)
+  $$('.page-thumb-checkbox').forEach(cb => {
+    cb.checked = true
+    cb.closest('.page-thumb').classList.add('selected')
+  })
+  updateSelectionBar()
+}
+
+function deselectAll() {
+  state.selection = []
+  $$('.page-thumb-checkbox').forEach(cb => {
+    cb.checked = false
+    cb.closest('.page-thumb').classList.remove('selected')
+  })
+  updateSelectionBar()
+}
+
+async function deleteSelection() {
+  if (!state.sessionId || !state.selection.length) return
+  if (!confirm(`¿Eliminar ${state.selection.length} página${state.selection.length !== 1 ? 's' : ''}?`)) return
+
+  try {
+    setLoading(true)
+    const data = await deletePagesByIndex(state.sessionId, [...state.selection])
+    state.pages = data.pages
+    state.selection = []
+    state.currentPage = Math.min(state.currentPage, data.pages.length)
+
+    await reloadPdfDoc()
+    renderThumbnailsPlaceholder()
+    await renderPage(state.currentPage)
+    updatePageControls()
+    updateSelectionBar()
+  } catch (err) {
+    alert(`Error al eliminar páginas: ${err.message}`)
+  } finally {
+    setLoading(false)
+  }
+}
+
+btnSelectAll.addEventListener('click', selectAll)
+btnDeselect.addEventListener('click', deselectAll)
+btnDeleteSelection.addEventListener('click', deleteSelection)
+
+// ── Reload PDF from server after mutations ─────────────────────
+async function reloadPdfDoc() {
+  const blob = await exportPdf(state.sessionId, null)
+  const arrayBuffer = await blob.arrayBuffer()
+  const lib = await loadPdfJs()
+  state.pdfDoc = await lib.getDocument({ data: arrayBuffer }).promise
+  state.totalPages = state.pdfDoc.numPages
+}
+
+// ── SortableJS ─────────────────────────────────────────────────
+let sortable = null
+
+function initSortable() {
+  if (sortable) sortable.destroy()
+  sortable = new Sortable(pageList, {
+    animation: 150,
+    handle: '.page-thumb-handle',
+    ghostClass: 'page-thumb--ghost',
+    chosenClass: 'page-thumb--chosen',
+    onEnd: async ({ oldIndex, newIndex }) => {
+      if (oldIndex === newIndex || !state.sessionId) return
+
+      const order = Array.from({ length: state.totalPages }, (_, i) => i)
+      order.splice(newIndex, 0, order.splice(oldIndex, 1)[0])
+
+      try {
+        setLoading(true)
+        const data = await reorderPages(state.sessionId, order)
+        state.pages = data.pages
+
+        await reloadPdfDoc()
+        renderThumbnailsPlaceholder()
+        await renderPage(state.currentPage)
+        updatePageControls()
+      } catch (err) {
+        alert(`Error al reordenar: ${err.message}`)
+        renderThumbnailsPlaceholder()
+      } finally {
+        setLoading(false)
+      }
+    },
+  })
 }
 
 // ── Navigation ───────────────────────────────────────────────

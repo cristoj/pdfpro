@@ -34,6 +34,16 @@ router.post('/search', async (req, res, next) => {
 
 // ── Text blocks ───────────────────────────────────────────────
 
+router.get('/text/:sessionId', async (req, res, next) => {
+  try {
+    const session = getSession(req.params.sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+    res.json({ success: true, textBlocks: session.textBlocks ?? [] })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/text/add', async (req, res, next) => {
   try {
     const { sessionId, pageIndex, x, y, text, fontSize, fontFamily, bold, italic } = req.body

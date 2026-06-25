@@ -64,6 +64,13 @@ export async function compressPdf(sessionId) {
   return request('POST', '/compress', { sessionId })
 }
 
+export async function getTextBlocks(sessionId) {
+  const res = await fetch(`${BASE}/text/${sessionId}`)
+  const data = await res.json().catch(() => ({ success: false }))
+  if (!data.success) throw new Error(data.error ?? 'Failed to get text blocks')
+  return data.textBlocks
+}
+
 export async function addTextBlock(sessionId, block) {
   return request('POST', '/text/add', { sessionId, ...block })
 }

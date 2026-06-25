@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, addTextBlock, updateTextBlock, deleteTextBlock } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -119,6 +119,10 @@ async function handleFiles(files) {
     state.pages = data.pages
     state.totalPages = data.pages.length
     state.currentPage = 1
+
+    state.textBlocks = state.sessionId
+      ? await getTextBlocks(state.sessionId).catch(() => [])
+      : []
 
     showViewer()
     await loadAndRenderPdf(files[0])

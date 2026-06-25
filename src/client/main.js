@@ -1,5 +1,6 @@
 import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // ── App State ────────────────────────────────────────────────
 const state = {
@@ -22,7 +23,7 @@ async function loadPdfJs() {
   if (pdfjsLib) return pdfjsLib
   const mod = await import('pdfjs-dist')
   pdfjsLib = mod
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
   return pdfjsLib
 }
 

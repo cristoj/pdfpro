@@ -341,12 +341,26 @@ html, body {
 
 .page-thumb { width: 100%; }
 
+/* Altura fija por tamaño — garantiza altura mínima visible */
+.page-thumb-canvas-wrapper { height: 120px; } /* fallback (md) */
+.page-list[data-size="sm"] .page-thumb-canvas-wrapper { height: 80px; }
+.page-list[data-size="md"] .page-thumb-canvas-wrapper { height: 120px; }
+.page-list[data-size="lg"] .page-thumb-canvas-wrapper { height: 160px; }
+
 .page-thumb-canvas-wrapper {
-  min-height: 80px;
   background: var(--color-surface-2);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+/* Canvas llena la altura del wrapper, mantiene ratio sin deformar */
+.page-thumb canvas {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 /* Selection bar */

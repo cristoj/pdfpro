@@ -727,7 +727,6 @@ textLayer.addEventListener('mousedown', async e => {
 
     const content = el.querySelector('.text-block-content')
     content.contentEditable = 'true'
-    content.focus()
 
     const commit = async () => {
       content.contentEditable = 'false'
@@ -773,6 +772,9 @@ textLayer.addEventListener('mousedown', async e => {
         content.blur()
       }
     })
+
+    // Defer focus so e.preventDefault() no bloquea el foco programático
+    setTimeout(() => content.focus(), 0)
     return
   }
 

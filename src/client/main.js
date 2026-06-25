@@ -187,17 +187,30 @@ function renderThumbnailsPlaceholder() {
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const thumbWidth = { sm: 80, md: 110, lg: 148 }[state.thumbnailSize]
+  const colW = { sm: 80, md: 110, lg: 148 }[state.thumbnailSize]
+  const colH = Math.round(colW * 297 / 210) // ratio A4 exacto
 
   for (const canvasEl of thumbs) {
     const pageNum = Number(canvasEl.dataset.page)
     const page = await state.pdfDoc.getPage(pageNum)
     const baseVp = page.getViewport({ scale: 1 })
-    const viewport = page.getViewport({ scale: thumbWidth / baseVp.width })
-    canvasEl.width = viewport.width
-    canvasEl.height = viewport.height
+    // Scale para que la página quepa dentro del box A4 sin distorsionarse
+    const scale = Math.min(colW / baseVp.width, colH / baseVp.height)
+    const viewport = page.getViewport({ scale })
+
+    // Renderizar a canvas temporal al tamaño real de la página
+    const tmp = document.createElement('canvas')
+    tmp.width = Math.round(viewport.width)
+    tmp.height = Math.round(viewport.height)
+    await page.render({ canvasContext: tmp.getContext('2d'), viewport }).promise
+
+    // Copiar centrado sobre canvas A4 (letterbox/pillarbox para páginas no A4)
+    canvasEl.width = colW
+    canvasEl.height = colH
     const ctx = canvasEl.getContext('2d')
-    await page.render({ canvasContext: ctx, viewport }).promise
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, colW, colH)
+    ctx.drawImage(tmp, Math.round((colW - tmp.width) / 2), Math.round((colH - tmp.height) / 2))
   }
 }
 

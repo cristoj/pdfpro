@@ -94,9 +94,22 @@ async function handleFiles(files) {
   if (!files.length) return
   try {
     setLoading(true)
-    const data = state.sessionId
-      ? await addPdf(state.sessionId, files)
-      : await uploadPdf(files)
+    let data
+    if (state.sessionId) {
+      try {
+        data = await addPdf(state.sessionId, files)
+      } catch (err) {
+        if (err.message.includes('Session not found')) {
+          state.sessionId = null
+          localStorage.removeItem('pdfpro_session')
+          data = await uploadPdf(files)
+        } else {
+          throw err
+        }
+      }
+    } else {
+      data = await uploadPdf(files)
+    }
 
     if (data.sessionId) {
       state.sessionId = data.sessionId

@@ -650,6 +650,46 @@ function createBlockElement(block) {
     if (!state.editMode) return
     e.stopPropagation()
     selectTextBlock(block.id)
+
+    // No drag si el bloque está en modo edición de texto (contentEditable)
+    if (content.contentEditable === 'true') return
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startLeft = parseFloat(el.style.left) || 0
+    const startTop = parseFloat(el.style.top) || 0
+    let dragging = false
+
+    const onMove = me => {
+      const dx = me.clientX - startX
+      const dy = me.clientY - startY
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 4) return
+      dragging = true
+      el.classList.add('text-block--dragging')
+      el.style.left = (startLeft + dx) + 'px'
+      el.style.top  = (startTop  + dy) + 'px'
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      el.classList.remove('text-block--dragging')
+      if (!dragging) return
+
+      const { x, y } = overlayCoordsToPdf(parseFloat(el.style.left), parseFloat(el.style.top))
+      block.x = x
+      block.y = y
+
+      if (state.sessionId && !block.id.startsWith('tmp-')) {
+        updateTextBlock(state.sessionId, block.id, { x, y }).catch(() => {
+          // Revertir visualmente si falla el guardado
+          el.setAttribute('style', blockCssStyle(block))
+        })
+      }
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   })
 
   textLayer.appendChild(el)

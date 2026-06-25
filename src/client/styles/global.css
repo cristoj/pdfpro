@@ -674,6 +674,18 @@ html, body {
   line-height: normal;
 }
 
+.text-layer.edit-active .text-block {
+  cursor: grab;
+}
+
+.text-block--dragging {
+  cursor: grabbing !important;
+  opacity: 0.85;
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-accent);
+  user-select: none;
+}
+
 .text-block:hover {
   border-color: var(--color-accent);
 }

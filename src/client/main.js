@@ -187,13 +187,13 @@ function renderThumbnailsPlaceholder() {
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const thumbHeight = { sm: 80, md: 120, lg: 160 }[state.thumbnailSize]
+  const thumbWidth = { sm: 80, md: 110, lg: 148 }[state.thumbnailSize]
 
   for (const canvasEl of thumbs) {
     const pageNum = Number(canvasEl.dataset.page)
     const page = await state.pdfDoc.getPage(pageNum)
     const baseVp = page.getViewport({ scale: 1 })
-    const viewport = page.getViewport({ scale: thumbHeight / baseVp.height })
+    const viewport = page.getViewport({ scale: thumbWidth / baseVp.width })
     canvasEl.width = viewport.width
     canvasEl.height = viewport.height
     const ctx = canvasEl.getContext('2d')

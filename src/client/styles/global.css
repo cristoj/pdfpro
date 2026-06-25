@@ -287,7 +287,6 @@ html, body {
 .page-thumb.active { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent-subtle); }
 .page-thumb.selected { background: var(--color-accent-subtle); }
 
-.page-thumb canvas { display: block; width: 100%; height: auto; }
 
 .page-thumb-index {
   text-align: center;
@@ -341,13 +340,10 @@ html, body {
 
 .page-thumb { width: 100%; }
 
-/* Altura fija por tamaño — garantiza altura mínima visible */
-.page-thumb-canvas-wrapper { height: 120px; } /* fallback (md) */
-.page-list[data-size="sm"] .page-thumb-canvas-wrapper { height: 80px; }
-.page-list[data-size="md"] .page-thumb-canvas-wrapper { height: 120px; }
-.page-list[data-size="lg"] .page-thumb-canvas-wrapper { height: 160px; }
-
+/* Wrapper con proporción A4 — la altura crece automáticamente con el ancho */
 .page-thumb-canvas-wrapper {
+  aspect-ratio: 210 / 297;
+  width: 100%;
   background: var(--color-surface-2);
   display: flex;
   align-items: center;
@@ -355,12 +351,13 @@ html, body {
   overflow: hidden;
 }
 
-/* Canvas llena la altura del wrapper, mantiene ratio sin deformar */
+/* Canvas contenido dentro del wrapper sin deformarse */
 .page-thumb canvas {
   display: block;
-  height: 100%;
-  width: auto;
   max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
 }
 
 /* Selection bar */

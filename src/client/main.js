@@ -662,9 +662,11 @@ function createBlockElement(block) {
   el.addEventListener('mousedown', e => {
     if (!state.editMode) return
     e.stopPropagation()
+
+    const wasAlreadySelected = state.selectedBlockId === block.id
     selectTextBlock(block.id)
 
-    // No drag si el bloque está en modo edición de texto (contentEditable)
+    // Si ya está en modo edición (contentEditable activo), no hacer nada más
     if (content.contentEditable === 'true') return
 
     const startX = e.clientX
@@ -687,18 +689,21 @@ function createBlockElement(block) {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       el.classList.remove('text-block--dragging')
-      if (!dragging) return
 
-      const { x, y } = overlayCoordsToPdf(parseFloat(el.style.left), parseFloat(el.style.top))
-      block.x = x
-      block.y = y
-
-      if (state.sessionId && !block.id.startsWith('tmp-')) {
-        updateTextBlock(state.sessionId, block.id, { x, y }).catch(() => {
-          // Revertir visualmente si falla el guardado
-          el.setAttribute('style', blockCssStyle(block))
-        })
+      if (dragging) {
+        const { x, y } = overlayCoordsToPdf(parseFloat(el.style.left), parseFloat(el.style.top))
+        block.x = x
+        block.y = y
+        if (state.sessionId && !block.id.startsWith('tmp-')) {
+          updateTextBlock(state.sessionId, block.id, { x, y }).catch(() => {
+            el.setAttribute('style', blockCssStyle(block))
+          })
+        }
+        return
       }
+
+      // Clic limpio en bloque ya seleccionado → entrar en modo edición
+      if (wasAlreadySelected) enterBlockEditMode(block, el, content)
     }
 
     document.addEventListener('mousemove', onMove)
@@ -839,18 +844,19 @@ textLayer.addEventListener('click', async e => {
   content.focus()
 })
 
-// ── Existing block edit on dblclick ──────────────────────────
-textLayer.addEventListener('dblclick', e => {
-  if (!state.editMode) return
-  const blockEl = e.target.closest('.text-block')
-  if (!blockEl) return
-  const id = blockEl.dataset.id
-  const block = state.textBlocks.find(b => b.id === id)
-  if (!block) return
-
-  const content = blockEl.querySelector('.text-block-content')
+// ── Editar contenido de un bloque existente ───────────────────
+function enterBlockEditMode(block, blockEl, content) {
+  if (content.contentEditable === 'true') return
   content.contentEditable = 'true'
   content.focus()
+
+  // Mover cursor al final del texto
+  const range = document.createRange()
+  range.selectNodeContents(content)
+  range.collapse(false)
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(range)
 
   const commit = async () => {
     content.contentEditable = 'false'
@@ -858,8 +864,19 @@ textLayer.addEventListener('dblclick', e => {
     if (text === block.text) return
     block.text = text
     if (state.sessionId) {
-      await updateTextBlock(state.sessionId, id, { text }).catch(() => {})
+      await updateTextBlock(state.sessionId, block.id, { text }).catch(() => {})
     }
   }
   content.addEventListener('blur', commit, { once: true })
+}
+
+// Mantener dblclick como atajo alternativo
+textLayer.addEventListener('dblclick', e => {
+  if (!state.editMode) return
+  const blockEl = e.target.closest('.text-block')
+  if (!blockEl) return
+  const id = blockEl.dataset.id
+  const block = state.textBlocks.find(b => b.id === id)
+  if (!block) return
+  enterBlockEditMode(block, blockEl, blockEl.querySelector('.text-block-content'))
 })

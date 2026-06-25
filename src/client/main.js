@@ -157,7 +157,7 @@ function renderThumbnailsPlaceholder() {
     thumb.dataset.index = i
     thumb.innerHTML = `
       <span class="page-thumb-handle" title="Arrastrar">⠿</span>
-      <div style="height:${state.thumbnailSize === 'lg' ? 200 : state.thumbnailSize === 'md' ? 140 : 100}px; background:var(--color-surface-2); display:flex; align-items:center; justify-content:center;">
+      <div class="page-thumb-canvas-wrapper">
         <canvas data-page="${i + 1}"></canvas>
       </div>
       <input type="checkbox" class="page-thumb-checkbox" data-index="${i}" />
@@ -432,7 +432,38 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigateTo(state.currentPage + 1)
 })
 
+// ── Sidebar resize ────────────────────────────────────────────
+const sidebarEl = $('sidebar')
+const sidebarResizeHandle = $('sidebar-resize')
+
+let _resizing = false
+let _resizeStartX = 0
+let _resizeStartW = 0
+
+sidebarResizeHandle.addEventListener('mousedown', e => {
+  _resizing = true
+  _resizeStartX = e.clientX
+  _resizeStartW = sidebarEl.offsetWidth
+  sidebarResizeHandle.classList.add('sidebar-resize--active')
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+})
+
+document.addEventListener('mousemove', e => {
+  if (!_resizing) return
+  const w = Math.max(160, Math.min(600, _resizeStartW + e.clientX - _resizeStartX))
+  sidebarEl.style.width = `${w}px`
+})
+
+document.addEventListener('mouseup', () => {
+  if (!_resizing) return
+  _resizing = false
+  sidebarResizeHandle.classList.remove('sidebar-resize--active')
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+})
+
 // ── Loading ───────────────────────────────────────────────────
 function setLoading(on) {
-  document.body.style.cursor = on ? 'wait' : ''
+  document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
 }

@@ -183,7 +183,7 @@ html, body {
   position: relative;
   width: var(--sidebar-width);
   min-width: 160px;
-  max-width: 600px;
+  max-width: 80vw;
   flex-shrink: 0;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
@@ -280,7 +280,6 @@ html, body {
   background: var(--color-bg);
   cursor: pointer;
   transition: all var(--duration-fast);
-  overflow: hidden;
   user-select: none;
 }
 .page-thumb:hover { border-color: var(--color-accent); box-shadow: var(--shadow-md); }
@@ -299,6 +298,7 @@ html, body {
   position: absolute;
   top: var(--space-1);
   left: var(--space-1);
+  z-index: 2;
   color: var(--color-muted);
   font-size: 14px;
   cursor: grab;
@@ -312,6 +312,7 @@ html, body {
   position: absolute;
   top: var(--space-1);
   right: var(--space-1);
+  z-index: 2;
   opacity: 0;
   transition: opacity var(--duration-fast);
   accent-color: var(--color-accent);
@@ -336,7 +337,7 @@ html, body {
 /* Thumbnail sizes — columnas auto-fill según ancho del sidebar */
 .page-list[data-size="sm"] { grid-template-columns: repeat(auto-fill, minmax(72px,  1fr)); }
 .page-list[data-size="md"] { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-.page-list[data-size="lg"] { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
+.page-list[data-size="lg"] { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 
 .page-thumb { width: 100%; }
 
@@ -347,6 +348,7 @@ html, body {
   position: relative;
   background: var(--color-surface-2);
   overflow: hidden;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 /* Canvas rellena el wrapper al 100% — el buffer se genera en ratio A4 */

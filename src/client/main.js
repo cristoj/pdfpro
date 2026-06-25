@@ -187,7 +187,7 @@ function renderThumbnailsPlaceholder() {
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const colW = { sm: 80, md: 110, lg: 148 }[state.thumbnailSize]
+  const colW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
   const colH = Math.round(colW * 297 / 210) // ratio A4 exacto
 
   for (const canvasEl of thumbs) {
@@ -465,7 +465,8 @@ sidebarResizeHandle.addEventListener('mousedown', e => {
 
 document.addEventListener('mousemove', e => {
   if (!_resizing) return
-  const w = Math.max(160, Math.min(600, _resizeStartW + e.clientX - _resizeStartX))
+  const maxW = Math.floor(window.innerWidth * 0.8)
+  const w = Math.max(160, Math.min(maxW, _resizeStartW + e.clientX - _resizeStartX))
   sidebarEl.style.width = `${w}px`
 })
 

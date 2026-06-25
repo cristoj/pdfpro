@@ -20,8 +20,10 @@ app.use('/api/pdf', toolsRoutes)
 
 app.use(errorHandler)
 
-app.listen(PORT, () => {
-  console.log(`PDFPro server running on http://localhost:${PORT}`)
-})
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(PORT, () => {
+    console.log(`PDFPro server running on http://localhost:${PORT}`)
+  })
+}
 
 export default app

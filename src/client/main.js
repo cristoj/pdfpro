@@ -475,6 +475,7 @@ btnCompress.addEventListener('click', async () => {
 document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA') return
+  if (document.activeElement?.contentEditable === 'true') return
 
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch() }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigateTo(state.currentPage - 1)

@@ -197,9 +197,28 @@ router.delete('/shapes/:id', async (req, res, next) => {
   }
 })
 
+router.get('/form/fields/:sessionId', async (req, res, next) => {
+  try {
+    const session = getSession(req.params.sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+    res.json({ success: true, formValues: session.formValues ?? {} })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/form/fill', async (req, res, next) => {
   try {
-    res.status(501).json({ success: false, error: 'Not implemented yet' })
+    const { sessionId, formValues } = req.body
+    if (!sessionId || typeof formValues !== 'object' || formValues === null) {
+      return res.status(400).json({ success: false, error: 'sessionId and formValues required' })
+    }
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    const merged = { ...(session.formValues ?? {}), ...formValues }
+    updateSession(sessionId, { formValues: merged })
+    res.json({ success: true, formValues: merged })
   } catch (err) {
     next(err)
   }

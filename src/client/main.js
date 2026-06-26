@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -22,6 +22,10 @@ const state = {
   selectedBlockId: null,
   shapes: [],                  // { id, type, pageIndex, x, y, width, height, fillColor, fillTransparent, strokeColor, strokeWidth }
   selectedShapeId: null,
+  // Forms mode
+  formsMode: false,
+  formFields: [],              // { name, fieldType, pageIndex, rect, pageHeight, checkBox, radioButton, options, multiSelect, defaultValue }
+  formValues: {},              // { fieldName: value }
   pageWidthPt: 0,
   pageHeightPt: 0,
   typography: { fontFamily: 'Helvetica', fontSize: 14, bold: false, italic: false, color: '#000000' },
@@ -89,6 +93,7 @@ const shapeStrokeColorInput = $('shape-stroke-color')
 const shapeStrokeWidthInput = $('shape-stroke-width')
 const btnDeleteBlock = $('btn-delete-block')
 const btnEdit = $('btn-edit')
+const btnForms = $('btn-forms')
 
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
@@ -144,6 +149,14 @@ async function handleFiles(files, { forceNew = false } = {}) {
     state.shapes = state.sessionId
       ? await getShapes(state.sessionId).catch(() => [])
       : []
+
+    state.formValues = state.sessionId
+      ? await getFormValues(state.sessionId).catch(() => ({}))
+      : {}
+
+    // Resetear campos detectados al cargar un nuevo PDF
+    state.formFields = []
+    if (state.formsMode) setFormsMode(false)
 
     showViewer()
     await loadAndRenderPdf(files[0])
@@ -560,12 +573,126 @@ function setLoading(on) {
   document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
 }
 
+// ── Forms mode ────────────────────────────────────────────────
+async function setFormsMode(on) {
+  state.formsMode = on
+  btnForms.classList.toggle('toolbar-btn--active', on)
+
+  if (on) {
+    if (state.editMode) setEditMode(false)
+    if (!state.formFields.length) await detectFormFields()
+    renderEditOverlay()
+  } else {
+    renderEditOverlay()
+  }
+}
+
+async function detectFormFields() {
+  if (!state.pdfDoc) return
+  state.formFields = []
+
+  for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+    const page = await state.pdfDoc.getPage(pageNum)
+    const baseVp = page.getViewport({ scale: 1 })
+    const pageHeight = baseVp.height
+
+    const annotations = await page.getAnnotations()
+    const widgets = annotations.filter(a => a.subtype === 'Widget' && !a.hidden)
+
+    for (const ann of widgets) {
+      if (!ann.fieldName || !ann.rect) continue
+      state.formFields.push({
+        name: ann.fieldName,
+        fieldType: ann.fieldType,   // 'Tx' | 'Btn' | 'Ch' | 'Sig'
+        pageIndex: pageNum - 1,
+        rect: ann.rect,             // [x1, y1, x2, y2] PDF user space
+        pageHeight,
+        checkBox: ann.checkBox ?? false,
+        radioButton: ann.radioButton ?? false,
+        options: ann.options ?? [],
+        multiSelect: ann.multiSelect ?? false,
+        defaultValue: ann.fieldValue ?? '',
+      })
+    }
+  }
+}
+
+function createFormFieldElement(field) {
+  const [x1, y1, x2, y2] = field.rect
+  const left = x1 * state.zoom
+  const top = (field.pageHeight - y2) * state.zoom
+  const width = Math.max((x2 - x1) * state.zoom, 10)
+  const height = Math.max((y2 - y1) * state.zoom, 10)
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'form-field-overlay'
+  wrapper.dataset.fieldName = field.name
+  wrapper.style.cssText = `left:${left}px;top:${top}px;width:${width}px;height:${height}px;`
+
+  const savedValue = state.formValues[field.name]
+
+  let input = null
+
+  if (field.fieldType === 'Tx') {
+    input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'form-field-input'
+    input.value = savedValue ?? field.defaultValue ?? ''
+    input.addEventListener('change', () => onFormValueChange(field.name, input.value))
+    input.addEventListener('input', () => onFormValueChange(field.name, input.value))
+  } else if (field.fieldType === 'Btn' && field.checkBox) {
+    const cb = document.createElement('input')
+    cb.type = 'checkbox'
+    cb.className = 'form-field-checkbox'
+    cb.checked = (savedValue === 'Yes') || (savedValue === true) ||
+      (!savedValue && (field.defaultValue === 'Yes' || field.defaultValue === 'On'))
+    cb.addEventListener('change', () => onFormValueChange(field.name, cb.checked ? 'Yes' : 'Off'))
+    input = cb
+  } else if (field.fieldType === 'Ch' && !field.multiSelect) {
+    const sel = document.createElement('select')
+    sel.className = 'form-field-select'
+    for (const opt of field.options) {
+      const o = document.createElement('option')
+      o.value = opt.exportValue ?? opt
+      o.textContent = opt.displayValue ?? opt
+      if ((savedValue ?? field.defaultValue) === o.value) o.selected = true
+      sel.appendChild(o)
+    }
+    sel.addEventListener('change', () => onFormValueChange(field.name, sel.value))
+    input = sel
+  }
+
+  if (input) {
+    wrapper.appendChild(input)
+    textLayer.appendChild(wrapper)
+  }
+}
+
+let _saveFormTimeout = null
+
+function onFormValueChange(name, value) {
+  state.formValues[name] = value
+  clearTimeout(_saveFormTimeout)
+  _saveFormTimeout = setTimeout(async () => {
+    if (!state.sessionId) return
+    try {
+      await fillFormFields(state.sessionId, state.formValues)
+    } catch { /* valores en memoria, sin bloquear */ }
+  }, 600)
+}
+
+btnForms.addEventListener('click', () => {
+  if (!state.sessionId) return
+  setFormsMode(!state.formsMode)
+})
+
 // ── Edit mode ─────────────────────────────────────────────────
 function setEditMode(on) {
   state.editMode = on
   editToolbar.style.display = on ? 'flex' : 'none'
   btnEdit.classList.toggle('toolbar-btn--active', on)
   textLayer.classList.toggle('edit-active', on)
+  if (on && state.formsMode) setFormsMode(false)
   if (!on) {
     deselectTextBlock()
     deselectShape()
@@ -732,12 +859,13 @@ function blockCssStyle(block) {
 function renderEditOverlay() {
   textLayer.innerHTML = ''
   const pageIdx = state.currentPage - 1
-  state.shapes.filter(s => s.pageIndex === pageIdx).forEach(shape => {
-    createShapeElement(shape)
-  })
-  state.textBlocks.filter(b => b.pageIndex === pageIdx).forEach(block => {
-    createBlockElement(block)
-  })
+
+  state.shapes.filter(s => s.pageIndex === pageIdx).forEach(shape => createShapeElement(shape))
+  state.textBlocks.filter(b => b.pageIndex === pageIdx).forEach(block => createBlockElement(block))
+
+  if (state.formsMode) {
+    state.formFields.filter(f => f.pageIndex === pageIdx).forEach(field => createFormFieldElement(field))
+  }
 }
 
 function createBlockElement(block) {

@@ -1133,6 +1133,67 @@ html, body {
   user-select: none;
 }
 
+/* ── Form field overlays ──────────────────────────────── */
+.form-field-overlay {
+  position: absolute;
+  pointer-events: all;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.form-field-input {
+  width: 100%;
+  height: 100%;
+  padding: 1px 3px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1.5px solid rgba(37, 99, 235, 0.5);
+  border-radius: 2px;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--color-text);
+  outline: none;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.form-field-input:focus {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.form-field-select {
+  width: 100%;
+  height: 100%;
+  padding: 1px 2px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1.5px solid rgba(37, 99, 235, 0.5);
+  border-radius: 2px;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--color-text);
+  outline: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.form-field-select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.form-field-checkbox {
+  width: 100%;
+  height: 100%;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  margin: 0;
+}
+
 /* ── Utilities ────────────────────────────────────────── */
 .hidden {
   display: none !important;

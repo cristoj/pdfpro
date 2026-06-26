@@ -1100,6 +1100,41 @@ html, body {
 .shape-handle[data-handle="bc"] { bottom: -4px; left: calc(50% - 4px); cursor: s-resize; }
 .shape-handle[data-handle="br"] { bottom: -4px; right: -4px; cursor: se-resize; }
 
+/* ── Image blocks ─────────────────────────────────────── */
+.image-block {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.text-layer.edit-active .image-block {
+  cursor: grab;
+}
+
+.image-block--selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.image-block--dragging {
+  cursor: grabbing !important;
+  opacity: 0.85;
+}
+
+.image-block-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.image-block--selected .shape-handle {
+  display: block;
+}
+
 /* Shape toolbar controls */
 .shape-no-fill-label {
   display: inline-flex;

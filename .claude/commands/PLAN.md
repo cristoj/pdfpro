@@ -246,14 +246,15 @@ Estado global mínimo en un objeto `AppState` (no se necesita librería):
 - [x] Al exportar el pdf, el nombre del fichero por defecto sea el del titulo pero haciendo un slugfy, si no queda con export
 - [x] Añadir a los botones de seleccionar y arrastrar un fondo para resaltarlos en las miniaturas de las paginas
 
-### Fase 8 — Firma
+### Fase 8 - Añadir Imagen
+- [x] En la página de Edición añadir al lado del boton del circulo un boton con icono de imagen para añadir una imagen
+- [x] Añadir imagen, abre el explorador de archivos para seleccionar una imagen y la coloca en la pagina actual, y con el boton de Seleccionar podremos moverla con drag and drop y hacer un resize
+
+### Fase 9 — Firma
 - [ ] Añadir botón en el menú superior con icono de firma que desplegará un submenú con: Importar imagen, conectar con Autofirma, Dibujar
-- [ ] Importar imagen, abre el explorador de archivos para seleccionar una imagen y la coloca en la pagina actual, y con el boton de Seleccionar podremos moverla con drag and drop y hacer un resize
+- [ ] Importar imagen, aprovechar el componente de añadir imagen
 - [ ] Conectar con Autofirma, exportará el documento actual y lo enviará a Autofirma y esta aplicacion se abrirá automaticamente con el pdf exportado seleccionado
 - [ ] Dibujar, se colocará un rectangulo en la pagina actual que se podrá seleccionar, recolocar y redimensionar y en su interior por medio de un periférico (ratón, pencil, etc) dibujar a mano alzada una firma
-
-### Fase 9 - Añadir Imagen
-- [ ] En la página de Edición añadir al lado del boton del circulo un boton con icono de imagen para añadir una imagen, aprovechar el componente de imagen de la firma.
 
 ---
 

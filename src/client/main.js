@@ -1033,9 +1033,11 @@ function setEditMode(on) {
   btnEdit.classList.toggle('toolbar-btn--active', on)
   textLayer.classList.toggle('edit-active', on)
   if (on && state.formsMode) setFormsMode(false)
+  if (on && state.viewMode !== 'page') setViewMode('page')
   if (!on) {
     deselectTextBlock()
     deselectShape()
+    deselectImage()
     setActiveTool('select')
   }
 }

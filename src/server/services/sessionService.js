@@ -15,7 +15,7 @@ function purgeExpired() {
 
 export function createSession(filePath, pages) {
   const id = uuidv4()
-  sessions.set(id, { id, filePath, pages, createdAt: Date.now() })
+  sessions.set(id, { id, filePath, pages, textBlocks: [], createdAt: Date.now() })
   return id
 }
 

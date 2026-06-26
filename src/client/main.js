@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -15,6 +15,17 @@ const state = {
   darkMode: localStorage.getItem('pdfpro_dark') === 'true',
   selection: [],
   pdfDoc: null,
+  // Edit mode
+  editMode: false,
+  activeTool: 'select',       // 'select' | 'addText' | 'addRect' | 'addCircle'
+  textBlocks: [],              // { id, pageIndex, x, y, text, fontSize, fontFamily, bold, italic, color }
+  selectedBlockId: null,
+  shapes: [],                  // { id, type, pageIndex, x, y, width, height, fillColor, fillTransparent, strokeColor, strokeWidth }
+  selectedShapeId: null,
+  pageWidthPt: 0,
+  pageHeightPt: 0,
+  typography: { fontFamily: 'Helvetica', fontSize: 14, bold: false, italic: false, color: '#000000' },
+  shapeStyle: { fillColor: '#ffffff', fillTransparent: false, strokeColor: '#000000', strokeWidth: 2 },
 }
 
 // ── PDF.js ───────────────────────────────────────────────────
@@ -58,6 +69,26 @@ const selectionCount = $('selection-count')
 const btnSelectAll = $('btn-select-all')
 const btnDeselect = $('btn-deselect')
 const btnDeleteSelection = $('btn-delete-selection')
+const editToolbar = $('edit-toolbar')
+const textLayer = $('text-layer')
+const toolSelectBtn = $('tool-select')
+const toolAddTextBtn = $('tool-add-text')
+const toolRectBtn = $('tool-rect')
+const toolCircleBtn = $('tool-circle')
+const fontFamilySelect = $('font-family-select')
+const fontSizeInput = $('font-size-input')
+const btnBold = $('btn-bold')
+const btnItalic = $('btn-italic')
+const fontColorInput = $('font-color-input')
+const typographyControls = $('typography-controls')
+const shapeControls = $('shape-controls')
+const shapeControlsSep = $('shape-controls-sep')
+const shapeFillColorInput = $('shape-fill-color')
+const shapeNoFillCheckbox = $('shape-no-fill')
+const shapeStrokeColorInput = $('shape-stroke-color')
+const shapeStrokeWidthInput = $('shape-stroke-width')
+const btnDeleteBlock = $('btn-delete-block')
+const btnEdit = $('btn-edit')
 
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
@@ -72,13 +103,30 @@ btnDarkmode.addEventListener('click', () => applyDarkMode(!state.darkMode))
 applyDarkMode(state.darkMode)
 
 // ── File Upload ──────────────────────────────────────────────
-async function handleFiles(files) {
+async function handleFiles(files, { forceNew = false } = {}) {
   if (!files.length) return
   try {
     setLoading(true)
-    const data = state.sessionId
-      ? await addPdf(state.sessionId, files)
-      : await uploadPdf(files)
+    let data
+    if (forceNew) {
+      state.sessionId = null
+      localStorage.removeItem('pdfpro_session')
+    }
+    if (state.sessionId) {
+      try {
+        data = await addPdf(state.sessionId, files)
+      } catch (err) {
+        if (err.message.includes('Session not found')) {
+          state.sessionId = null
+          localStorage.removeItem('pdfpro_session')
+          data = await uploadPdf(files)
+        } else {
+          throw err
+        }
+      }
+    } else {
+      data = await uploadPdf(files)
+    }
 
     if (data.sessionId) {
       state.sessionId = data.sessionId
@@ -88,6 +136,14 @@ async function handleFiles(files) {
     state.pages = data.pages
     state.totalPages = data.pages.length
     state.currentPage = 1
+
+    state.textBlocks = state.sessionId
+      ? await getTextBlocks(state.sessionId).catch(() => [])
+      : []
+
+    state.shapes = state.sessionId
+      ? await getShapes(state.sessionId).catch(() => [])
+      : []
 
     showViewer()
     await loadAndRenderPdf(files[0])
@@ -102,7 +158,7 @@ async function handleFiles(files) {
 
 btnUpload.addEventListener('click', () => fileInput.click())
 btnBrowse?.addEventListener('click', () => fileInput.click())
-fileInput.addEventListener('change', e => handleFiles([...e.target.files]))
+fileInput.addEventListener('change', e => handleFiles([...e.target.files], { forceNew: true }))
 
 // ── Drag & Drop on viewer ────────────────────────────────────
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') })
@@ -111,7 +167,7 @@ dropZone.addEventListener('drop', e => {
   e.preventDefault()
   dropZone.classList.remove('drag-over')
   const files = [...e.dataTransfer.files].filter(f => f.type === 'application/pdf')
-  if (files.length) handleFiles(files)
+  if (files.length) handleFiles(files, { forceNew: true })
 })
 
 // ── PDF Rendering (PDF.js) ───────────────────────────────────
@@ -126,8 +182,11 @@ async function loadAndRenderPdf(file) {
 async function renderPage(pageNum) {
   if (!state.pdfDoc) return
   const page = await state.pdfDoc.getPage(pageNum)
-  const viewport = page.getViewport({ scale: state.zoom })
+  const baseVp = page.getViewport({ scale: 1 })
+  state.pageWidthPt = baseVp.width
+  state.pageHeightPt = baseVp.height
 
+  const viewport = page.getViewport({ scale: state.zoom })
   pdfCanvas.width = viewport.width
   pdfCanvas.height = viewport.height
 
@@ -136,6 +195,7 @@ async function renderPage(pageNum) {
 
   currentPageInput.value = pageNum
   state.currentPage = pageNum
+  renderEditOverlay()
 }
 
 // ── Show/hide viewer ─────────────────────────────────────────
@@ -187,30 +247,39 @@ function renderThumbnailsPlaceholder() {
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const colW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
-  const colH = Math.round(colW * 297 / 210) // ratio A4 exacto
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const fallbackW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
 
   for (const canvasEl of thumbs) {
     const pageNum = Number(canvasEl.dataset.page)
     const page = await state.pdfDoc.getPage(pageNum)
     const baseVp = page.getViewport({ scale: 1 })
-    // Scale para que la página quepa dentro del box A4 sin distorsionarse
-    const scale = Math.min(colW / baseVp.width, colH / baseVp.height)
+
+    // Usar el tamaño real renderizado en pantalla para evitar blur por upscaling CSS
+    const rect = canvasEl.getBoundingClientRect()
+    const colW = rect.width > 0 ? rect.width : fallbackW
+    const colH = rect.height > 0 ? rect.height : Math.round(colW * 297 / 210)
+
+    // Escala HiDPI: buffer del canvas = píxeles físicos de pantalla
+    const scale = Math.min((colW * dpr) / baseVp.width, (colH * dpr) / baseVp.height)
     const viewport = page.getViewport({ scale })
 
-    // Renderizar a canvas temporal al tamaño real de la página
+    const bufW = Math.round(colW * dpr)
+    const bufH = Math.round(colH * dpr)
+
+    // Renderizar a canvas temporal al tamaño físico
     const tmp = document.createElement('canvas')
     tmp.width = Math.round(viewport.width)
     tmp.height = Math.round(viewport.height)
     await page.render({ canvasContext: tmp.getContext('2d'), viewport }).promise
 
-    // Copiar centrado sobre canvas A4 (letterbox/pillarbox para páginas no A4)
-    canvasEl.width = colW
-    canvasEl.height = colH
+    // Canvas final con resolución HiDPI
+    canvasEl.width = bufW
+    canvasEl.height = bufH
     const ctx = canvasEl.getContext('2d')
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, colW, colH)
-    ctx.drawImage(tmp, Math.round((colW - tmp.width) / 2), Math.round((colH - tmp.height) / 2))
+    ctx.fillRect(0, 0, bufW, bufH)
+    ctx.drawImage(tmp, Math.round((bufW - tmp.width) / 2), Math.round((bufH - tmp.height) / 2))
   }
 }
 
@@ -440,10 +509,18 @@ btnCompress.addEventListener('click', async () => {
 document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA') return
+  if (document.activeElement?.contentEditable === 'true') return
 
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch() }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigateTo(state.currentPage - 1)
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigateTo(state.currentPage + 1)
+
+  if (state.editMode) {
+    if (e.key === 'v' || e.key === 'V') setActiveTool('select')
+    if (e.key === 't' || e.key === 'T') setActiveTool('addText')
+    if (e.key === 'r' || e.key === 'R') setActiveTool('addRect')
+    if (e.key === 'c' || e.key === 'C') setActiveTool('addCircle')
+  }
 })
 
 // ── Sidebar resize ────────────────────────────────────────────
@@ -482,3 +559,657 @@ document.addEventListener('mouseup', () => {
 function setLoading(on) {
   document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
 }
+
+// ── Edit mode ─────────────────────────────────────────────────
+function setEditMode(on) {
+  state.editMode = on
+  editToolbar.style.display = on ? 'flex' : 'none'
+  btnEdit.classList.toggle('toolbar-btn--active', on)
+  textLayer.classList.toggle('edit-active', on)
+  if (!on) {
+    deselectTextBlock()
+    deselectShape()
+    setActiveTool('select')
+  }
+}
+
+function setActiveTool(tool) {
+  state.activeTool = tool
+  toolSelectBtn.classList.toggle('tool-btn--active', tool === 'select')
+  toolAddTextBtn.classList.toggle('tool-btn--active', tool === 'addText')
+  toolRectBtn.classList.toggle('tool-btn--active', tool === 'addRect')
+  toolCircleBtn.classList.toggle('tool-btn--active', tool === 'addCircle')
+  textLayer.classList.toggle('add-text-cursor', tool === 'addText' || tool === 'addRect' || tool === 'addCircle')
+
+  const isShapeTool = tool === 'addRect' || tool === 'addCircle'
+  showShapeControls(isShapeTool)
+}
+
+function showShapeControls(on) {
+  shapeControls.style.display = on ? 'flex' : 'none'
+  shapeControlsSep.style.display = on ? 'block' : 'none'
+}
+
+btnEdit.addEventListener('click', () => setEditMode(!state.editMode))
+toolSelectBtn.addEventListener('click', () => setActiveTool('select'))
+toolAddTextBtn.addEventListener('click', () => setActiveTool('addText'))
+toolRectBtn.addEventListener('click', () => setActiveTool('addRect'))
+toolCircleBtn.addEventListener('click', () => setActiveTool('addCircle'))
+
+// ── Typography controls ───────────────────────────────────────
+function syncTypographyUI() {
+  fontFamilySelect.value = state.typography.fontFamily
+  fontSizeInput.value = state.typography.fontSize
+  btnBold.classList.toggle('tool-btn--active', state.typography.bold)
+  btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
+  fontColorInput.value = state.typography.color ?? '#000000'
+}
+
+fontFamilySelect.addEventListener('change', () => {
+  state.typography.fontFamily = fontFamilySelect.value
+  applyTypographyToSelected()
+})
+fontSizeInput.addEventListener('change', () => {
+  state.typography.fontSize = Number(fontSizeInput.value) || 14
+  applyTypographyToSelected()
+})
+btnBold.addEventListener('click', () => {
+  state.typography.bold = !state.typography.bold
+  btnBold.classList.toggle('tool-btn--active', state.typography.bold)
+  applyTypographyToSelected()
+})
+btnItalic.addEventListener('click', () => {
+  state.typography.italic = !state.typography.italic
+  btnItalic.classList.toggle('tool-btn--active', state.typography.italic)
+  applyTypographyToSelected()
+})
+fontColorInput.addEventListener('input', () => {
+  state.typography.color = fontColorInput.value
+  applyTypographyToSelected()
+})
+
+function applyTypographyToSelected() {
+  if (!state.selectedBlockId) return
+  const block = state.textBlocks.find(b => b.id === state.selectedBlockId)
+  if (!block) return
+  Object.assign(block, {
+    fontFamily: state.typography.fontFamily,
+    fontSize: state.typography.fontSize,
+    bold: state.typography.bold,
+    italic: state.typography.italic,
+    color: state.typography.color,
+  })
+  rerenderTextBlock(block)
+  if (state.sessionId) {
+    updateTextBlock(state.sessionId, block.id, {
+      fontFamily: block.fontFamily,
+      fontSize: block.fontSize,
+      bold: block.bold,
+      italic: block.italic,
+      color: block.color,
+    }).catch(() => { })
+  }
+}
+
+// ── Shape style controls ──────────────────────────────────────
+function syncShapeStyleUI() {
+  shapeFillColorInput.value = state.shapeStyle.fillColor
+  shapeNoFillCheckbox.checked = state.shapeStyle.fillTransparent
+  shapeFillColorInput.disabled = state.shapeStyle.fillTransparent
+  shapeStrokeColorInput.value = state.shapeStyle.strokeColor
+  shapeStrokeWidthInput.value = state.shapeStyle.strokeWidth
+}
+
+function applyShapeStyleToSelected() {
+  if (!state.selectedShapeId) return
+  const shape = state.shapes.find(s => s.id === state.selectedShapeId)
+  if (!shape) return
+  Object.assign(shape, {
+    fillColor: state.shapeStyle.fillColor,
+    fillTransparent: state.shapeStyle.fillTransparent,
+    strokeColor: state.shapeStyle.strokeColor,
+    strokeWidth: state.shapeStyle.strokeWidth,
+  })
+  rerenderShape(shape)
+  if (state.sessionId) {
+    updateShape(state.sessionId, shape.id, {
+      fillColor: shape.fillColor,
+      fillTransparent: shape.fillTransparent,
+      strokeColor: shape.strokeColor,
+      strokeWidth: shape.strokeWidth,
+    }).catch(() => { })
+  }
+}
+
+shapeFillColorInput.addEventListener('input', () => {
+  state.shapeStyle.fillColor = shapeFillColorInput.value
+  applyShapeStyleToSelected()
+})
+
+shapeNoFillCheckbox.addEventListener('change', () => {
+  state.shapeStyle.fillTransparent = shapeNoFillCheckbox.checked
+  shapeFillColorInput.disabled = shapeNoFillCheckbox.checked
+  applyShapeStyleToSelected()
+})
+
+shapeStrokeColorInput.addEventListener('input', () => {
+  state.shapeStyle.strokeColor = shapeStrokeColorInput.value
+  applyShapeStyleToSelected()
+})
+
+shapeStrokeWidthInput.addEventListener('change', () => {
+  state.shapeStyle.strokeWidth = Number(shapeStrokeWidthInput.value) || 0
+  applyShapeStyleToSelected()
+})
+
+// ── Text overlay ──────────────────────────────────────────────
+const CSS_FONTS = {
+  Helvetica: "'Geist Sans', Helvetica, Arial, sans-serif",
+  Courier: "'JetBrains Mono', 'Courier New', monospace",
+}
+
+function pdfCoordsToOverlay(x, y) {
+  return {
+    left: x * state.zoom,
+    top: (state.pageHeightPt - y) * state.zoom,
+  }
+}
+
+function overlayCoordsToPdf(left, top) {
+  return {
+    x: left / state.zoom,
+    y: state.pageHeightPt - top / state.zoom,
+  }
+}
+
+function blockCssStyle(block) {
+  const { left, top } = pdfCoordsToOverlay(block.x, block.y)
+  const fontFamily = CSS_FONTS[block.fontFamily] ?? CSS_FONTS.Helvetica
+  const color = block.color ?? '#000000'
+  return `left:${left}px;top:${top}px;font-size:${block.fontSize * state.zoom}px;font-family:${fontFamily};font-weight:${block.bold ? 700 : 400};font-style:${block.italic ? 'italic' : 'normal'};color:${color};`
+}
+
+function renderEditOverlay() {
+  textLayer.innerHTML = ''
+  const pageIdx = state.currentPage - 1
+  state.shapes.filter(s => s.pageIndex === pageIdx).forEach(shape => {
+    createShapeElement(shape)
+  })
+  state.textBlocks.filter(b => b.pageIndex === pageIdx).forEach(block => {
+    createBlockElement(block)
+  })
+}
+
+function createBlockElement(block) {
+  const el = document.createElement('div')
+  el.className = 'text-block'
+  el.dataset.id = block.id
+  el.setAttribute('style', blockCssStyle(block))
+
+  const content = document.createElement('div')
+  content.className = 'text-block-content'
+  content.textContent = block.text
+
+  const delBtn = document.createElement('button')
+  delBtn.className = 'text-block-del'
+  delBtn.textContent = '✕'
+  delBtn.title = 'Eliminar bloque'
+  delBtn.addEventListener('mousedown', e => {
+    e.stopPropagation()
+    removeTextBlock(block.id)
+  })
+
+  el.appendChild(content)
+  el.appendChild(delBtn)
+
+  el.addEventListener('mousedown', e => {
+    if (!state.editMode) return
+    e.stopPropagation()
+
+    const wasAlreadySelected = state.selectedBlockId === block.id
+    selectTextBlock(block.id)
+
+    // Si ya está en modo edición (contentEditable activo), no hacer nada más
+    if (content.contentEditable === 'true') return
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startLeft = parseFloat(el.style.left) || 0
+    const startTop = parseFloat(el.style.top) || 0
+    let dragging = false
+
+    const onMove = me => {
+      const dx = me.clientX - startX
+      const dy = me.clientY - startY
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 4) return
+      dragging = true
+      el.classList.add('text-block--dragging')
+      el.style.left = (startLeft + dx) + 'px'
+      el.style.top = (startTop + dy) + 'px'
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      el.classList.remove('text-block--dragging')
+
+      if (dragging) {
+        const { x, y } = overlayCoordsToPdf(parseFloat(el.style.left), parseFloat(el.style.top))
+        block.x = x
+        block.y = y
+        if (state.sessionId && !block.id.startsWith('tmp-')) {
+          updateTextBlock(state.sessionId, block.id, { x, y }).catch(() => {
+            el.setAttribute('style', blockCssStyle(block))
+          })
+        }
+        return
+      }
+
+      // Clic limpio en bloque ya seleccionado → entrar en modo edición
+      if (wasAlreadySelected) enterBlockEditMode(block, el, content)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
+
+  textLayer.appendChild(el)
+  return el
+}
+
+// ── Shape overlay ─────────────────────────────────────────────
+function shapeOverlayStyle(shape) {
+  const left = shape.x * state.zoom
+  const height = shape.height * state.zoom
+  const top = (state.pageHeightPt - shape.y - shape.height) * state.zoom
+  const width = shape.width * state.zoom
+  const bg = shape.fillTransparent ? 'transparent' : shape.fillColor
+  const border = `${shape.strokeWidth * state.zoom}px solid ${shape.strokeColor}`
+  return `left:${left}px;top:${top}px;width:${width}px;height:${height}px;background:${bg};border:${border};`
+}
+
+function createShapeElement(shape) {
+  const el = document.createElement('div')
+  el.className = `shape-block shape-block--${shape.type}`
+  el.dataset.id = shape.id
+  el.dataset.kind = 'shape'
+  el.setAttribute('style', shapeOverlayStyle(shape))
+
+  const HANDLES = ['tl', 'tc', 'tr', 'ml', 'mr', 'bl', 'bc', 'br']
+  for (const h of HANDLES) {
+    const handle = document.createElement('div')
+    handle.className = 'shape-handle'
+    handle.dataset.handle = h
+    handle.addEventListener('mousedown', e => {
+      e.stopPropagation()
+      startShapeResize(e, shape, el, h)
+    })
+    el.appendChild(handle)
+  }
+
+  el.addEventListener('mousedown', e => {
+    if (!state.editMode) return
+    e.stopPropagation()
+    if (e.target.classList.contains('shape-handle')) return
+
+    deselectTextBlock()
+    selectShape(shape.id)
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startLeft = parseFloat(el.style.left) || 0
+    const startTop = parseFloat(el.style.top) || 0
+    let dragging = false
+
+    const onMove = me => {
+      const dx = me.clientX - startX
+      const dy = me.clientY - startY
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 4) return
+      dragging = true
+      el.classList.add('shape-block--dragging')
+      el.style.left = (startLeft + dx) + 'px'
+      el.style.top = (startTop + dy) + 'px'
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      el.classList.remove('shape-block--dragging')
+      if (!dragging) return
+
+      const left = parseFloat(el.style.left)
+      const top = parseFloat(el.style.top)
+      shape.x = left / state.zoom
+      shape.y = state.pageHeightPt - top / state.zoom - shape.height
+      if (state.sessionId) {
+        updateShape(state.sessionId, shape.id, { x: shape.x, y: shape.y }).catch(() => {
+          el.setAttribute('style', shapeOverlayStyle(shape))
+        })
+      }
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
+
+  textLayer.appendChild(el)
+  return el
+}
+
+function startShapeResize(e, shape, el, handle) {
+  e.preventDefault()
+  const startX = e.clientX
+  const startY = e.clientY
+  const startLeft = parseFloat(el.style.left) || 0
+  const startTop = parseFloat(el.style.top) || 0
+  const startWidth = parseFloat(el.style.width) || 0
+  const startHeight = parseFloat(el.style.height) || 0
+  const MIN = 20
+
+  const onMove = me => {
+    const dx = me.clientX - startX
+    const dy = me.clientY - startY
+    let left = startLeft, top = startTop, width = startWidth, height = startHeight
+
+    if (handle.includes('l')) {
+      const nw = startWidth - dx
+      if (nw >= MIN) { left = startLeft + dx; width = nw }
+    }
+    if (handle.includes('r')) { width = Math.max(MIN, startWidth + dx) }
+    if (handle.includes('t')) {
+      const nh = startHeight - dy
+      if (nh >= MIN) { top = startTop + dy; height = nh }
+    }
+    if (handle.includes('b')) { height = Math.max(MIN, startHeight + dy) }
+
+    el.style.left = left + 'px'
+    el.style.top = top + 'px'
+    el.style.width = width + 'px'
+    el.style.height = height + 'px'
+  }
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+
+    const left = parseFloat(el.style.left)
+    const top = parseFloat(el.style.top)
+    const width = parseFloat(el.style.width)
+    const height = parseFloat(el.style.height)
+
+    shape.width = width / state.zoom
+    shape.height = height / state.zoom
+    shape.x = left / state.zoom
+    shape.y = state.pageHeightPt - top / state.zoom - shape.height
+
+    if (state.sessionId) {
+      updateShape(state.sessionId, shape.id, {
+        x: shape.x, y: shape.y, width: shape.width, height: shape.height,
+      }).catch(() => { el.setAttribute('style', shapeOverlayStyle(shape)) })
+    }
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+function rerenderShape(shape) {
+  const el = textLayer.querySelector(`[data-id="${shape.id}"]`)
+  if (!el) return
+  const selected = el.classList.contains('shape-block--selected')
+  el.setAttribute('style', shapeOverlayStyle(shape))
+  if (selected) el.classList.add('shape-block--selected')
+}
+
+function selectShape(id) {
+  deselectShape()
+  deselectTextBlock()
+  state.selectedShapeId = id
+  const el = textLayer.querySelector(`[data-id="${id}"]`)
+  if (el) el.classList.add('shape-block--selected')
+
+  const shape = state.shapes.find(s => s.id === id)
+  if (shape) {
+    state.shapeStyle = {
+      fillColor: shape.fillColor ?? '#ffffff',
+      fillTransparent: shape.fillTransparent ?? false,
+      strokeColor: shape.strokeColor ?? '#000000',
+      strokeWidth: shape.strokeWidth ?? 2,
+    }
+    syncShapeStyleUI()
+  }
+  showShapeControls(true)
+  btnDeleteBlock.style.display = 'flex'
+}
+
+function deselectShape() {
+  if (state.selectedShapeId) {
+    const el = textLayer.querySelector(`[data-id="${state.selectedShapeId}"]`)
+    if (el) el.classList.remove('shape-block--selected')
+  }
+  state.selectedShapeId = null
+  if (!state.selectedBlockId) {
+    btnDeleteBlock.style.display = 'none'
+    if (!['addRect', 'addCircle'].includes(state.activeTool)) showShapeControls(false)
+  }
+}
+
+async function removeShape(id) {
+  state.shapes = state.shapes.filter(s => s.id !== id)
+  if (state.selectedShapeId === id) deselectShape()
+  const el = textLayer.querySelector(`[data-id="${id}"]`)
+  if (el) el.remove()
+  if (state.sessionId) {
+    await deleteShape(state.sessionId, id).catch(() => { })
+  }
+}
+
+function rerenderTextBlock(block) {
+  const el = textLayer.querySelector(`[data-id="${block.id}"]`)
+  if (!el) return
+  el.setAttribute('style', blockCssStyle(block))
+}
+
+function selectTextBlock(id) {
+  deselectTextBlock()
+  deselectShape()
+  state.selectedBlockId = id
+  const el = textLayer.querySelector(`[data-id="${id}"]`)
+  if (el) el.classList.add('text-block--selected')
+
+  const block = state.textBlocks.find(b => b.id === id)
+  if (block) {
+    state.typography = {
+      fontFamily: block.fontFamily,
+      fontSize: block.fontSize,
+      bold: block.bold,
+      italic: block.italic,
+      color: block.color ?? '#000000',
+    }
+    syncTypographyUI()
+  }
+  showShapeControls(false)
+  btnDeleteBlock.style.display = 'flex'
+}
+
+function deselectTextBlock() {
+  if (state.selectedBlockId) {
+    const el = textLayer.querySelector(`[data-id="${state.selectedBlockId}"]`)
+    if (el) el.classList.remove('text-block--selected')
+  }
+  state.selectedBlockId = null
+  btnDeleteBlock.style.display = 'none'
+}
+
+async function removeTextBlock(id) {
+  state.textBlocks = state.textBlocks.filter(b => b.id !== id)
+  if (state.selectedBlockId === id) deselectTextBlock()
+  renderTextOverlay()
+  if (state.sessionId) {
+    await deleteTextBlock(state.sessionId, id).catch(() => { })
+  }
+}
+
+btnDeleteBlock.addEventListener('click', () => {
+  if (state.selectedBlockId) removeTextBlock(state.selectedBlockId)
+  else if (state.selectedShapeId) removeShape(state.selectedShapeId)
+})
+
+// ── Text layer mousedown — deselect al pulsar fondo vacío ─────
+textLayer.addEventListener('mousedown', e => {
+  if (!state.editMode) return
+  if (e.target === textLayer) {
+    deselectTextBlock()
+    deselectShape()
+  }
+})
+
+// ── Text layer click — crear bloque de texto o forma ─────────
+textLayer.addEventListener('click', async e => {
+  if (!state.editMode) return
+  if (e.target !== textLayer) return
+
+  if (state.activeTool === 'addRect' || state.activeTool === 'addCircle') {
+    const rect = textLayer.getBoundingClientRect()
+    const overlayX = e.clientX - rect.left
+    const overlayY = e.clientY - rect.top
+
+    const defaultW = 150 / state.zoom
+    const defaultH = 100 / state.zoom
+    const x = overlayX / state.zoom
+    const y = state.pageHeightPt - overlayY / state.zoom - defaultH
+
+    const tempId = `tmp-shape-${Date.now()}`
+    const shape = {
+      id: tempId,
+      type: state.activeTool === 'addRect' ? 'rect' : 'circle',
+      pageIndex: state.currentPage - 1,
+      x, y,
+      width: defaultW,
+      height: defaultH,
+      ...state.shapeStyle,
+    }
+    state.shapes.push(shape)
+    createShapeElement(shape)
+    selectShape(tempId)
+
+    if (state.sessionId) {
+      try {
+        const { shape: saved } = await addShape(state.sessionId, shape)
+        const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+        Object.assign(shape, saved)
+        if (el) el.dataset.id = shape.id
+        if (state.selectedShapeId === tempId) state.selectedShapeId = shape.id
+      } catch {
+        state.shapes = state.shapes.filter(s => s.id !== tempId)
+        const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+        if (el) el.remove()
+      }
+    }
+    return
+  }
+
+  if (state.activeTool !== 'addText') return
+
+  const rect = textLayer.getBoundingClientRect()
+  const overlayX = e.clientX - rect.left
+  const overlayY = e.clientY - rect.top
+  const { x, y } = overlayCoordsToPdf(overlayX, overlayY)
+
+  const tempId = `tmp-${Date.now()}`
+  const block = {
+    id: tempId,
+    pageIndex: state.currentPage - 1,
+    x, y,
+    text: '',
+    ...state.typography,
+  }
+  state.textBlocks.push(block)
+  const el = createBlockElement(block)
+  selectTextBlock(tempId)
+
+  const content = el.querySelector('.text-block-content')
+  content.contentEditable = 'true'
+
+  const commit = async () => {
+    content.contentEditable = 'false'
+    const text = content.textContent.trim()
+
+    if (!text) {
+      state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
+      el.remove()
+      deselectTextBlock()
+      return
+    }
+
+    block.text = text
+    if (state.sessionId) {
+      try {
+        const { block: saved } = await addTextBlock(state.sessionId, {
+          pageIndex: block.pageIndex,
+          x: block.x,
+          y: block.y,
+          text: block.text,
+          fontSize: block.fontSize,
+          fontFamily: block.fontFamily,
+          bold: block.bold,
+          italic: block.italic,
+          color: block.color,
+        })
+        Object.assign(block, saved)
+        el.dataset.id = block.id
+        if (state.selectedBlockId === tempId) state.selectedBlockId = block.id
+      } catch {
+        state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
+        el.remove()
+      }
+    }
+  }
+
+  content.addEventListener('blur', commit, { once: true })
+  content.addEventListener('keydown', ke => {
+    if (ke.key === 'Escape') {
+      content.textContent = ''
+      content.blur()
+    }
+  })
+
+  content.focus()
+})
+
+// ── Editar contenido de un bloque existente ───────────────────
+function enterBlockEditMode(block, blockEl, content) {
+  if (content.contentEditable === 'true') return
+  content.contentEditable = 'true'
+  content.focus()
+
+  // Mover cursor al final del texto
+  const range = document.createRange()
+  range.selectNodeContents(content)
+  range.collapse(false)
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(range)
+
+  const commit = async () => {
+    content.contentEditable = 'false'
+    const text = content.textContent
+    if (text === block.text) return
+    block.text = text
+    if (state.sessionId) {
+      await updateTextBlock(state.sessionId, block.id, { text }).catch(() => { })
+    }
+  }
+  content.addEventListener('blur', commit, { once: true })
+}
+
+// Mantener dblclick como atajo alternativo
+textLayer.addEventListener('dblclick', e => {
+  if (!state.editMode) return
+  const blockEl = e.target.closest('.text-block')
+  if (!blockEl) return
+  const id = blockEl.dataset.id
+  const block = state.textBlocks.find(b => b.id === id)
+  if (!block) return
+  enterBlockEditMode(block, blockEl, blockEl.querySelector('.text-block-content'))
+})

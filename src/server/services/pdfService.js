@@ -1,5 +1,14 @@
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import fs from 'node:fs/promises'
+
+function hexToRgb(hex = '#000000') {
+  const h = hex.replace('#', '')
+  return rgb(
+    parseInt(h.slice(0, 2), 16) / 255,
+    parseInt(h.slice(2, 4), 16) / 255,
+    parseInt(h.slice(4, 6), 16) / 255,
+  )
+}
 
 export async function loadPdf(filePath) {
   const bytes = await fs.readFile(filePath)
@@ -54,6 +63,89 @@ export async function extractPages(doc, pageIndices) {
     newDoc.addPage(page)
   }
   return newDoc
+}
+
+const FONT_MAP = {
+  Helvetica: {
+    normal: StandardFonts.Helvetica,
+    bold: StandardFonts.HelveticaBold,
+    italic: StandardFonts.HelveticaOblique,
+    boldItalic: StandardFonts.HelveticaBoldOblique,
+  },
+  Courier: {
+    normal: StandardFonts.Courier,
+    bold: StandardFonts.CourierBold,
+    italic: StandardFonts.CourierOblique,
+    boldItalic: StandardFonts.CourierBoldOblique,
+  },
+}
+
+export async function applyTextBlocks(doc, textBlocks) {
+  if (!textBlocks?.length) return doc
+  const cache = new Map()
+
+  async function font(family, bold, italic) {
+    const map = FONT_MAP[family] ?? FONT_MAP.Helvetica
+    const key = bold && italic ? 'boldItalic' : bold ? 'bold' : italic ? 'italic' : 'normal'
+    const name = map[key]
+    if (!cache.has(name)) cache.set(name, await doc.embedFont(name))
+    return cache.get(name)
+  }
+
+  const pages = doc.getPages()
+  for (const block of textBlocks) {
+    const page = pages[block.pageIndex]
+    if (!page || !block.text?.trim()) continue
+    page.drawText(block.text, {
+      x: block.x,
+      y: block.y,
+      size: block.fontSize ?? 14,
+      font: await font(block.fontFamily ?? 'Helvetica', block.bold, block.italic),
+      color: hexToRgb(block.color),
+    })
+  }
+  return doc
+}
+
+export async function applyShapes(doc, shapes) {
+  if (!shapes?.length) return doc
+  const pages = doc.getPages()
+
+  for (const shape of shapes) {
+    const page = pages[shape.pageIndex]
+    if (!page) continue
+
+    const fillColor = hexToRgb(shape.fillColor ?? '#ffffff')
+    const borderColor = hexToRgb(shape.strokeColor ?? '#000000')
+    const borderWidth = shape.strokeWidth ?? 2
+    const opacity = shape.fillTransparent ? 0 : 1
+
+    if (shape.type === 'rect') {
+      page.drawRectangle({
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        color: fillColor,
+        opacity,
+        borderColor,
+        borderWidth,
+      })
+    } else if (shape.type === 'circle') {
+      page.drawEllipse({
+        x: shape.x + shape.width / 2,
+        y: shape.y + shape.height / 2,
+        xScale: shape.width / 2,
+        yScale: shape.height / 2,
+        color: fillColor,
+        opacity,
+        borderColor,
+        borderWidth,
+      })
+    }
+  }
+
+  return doc
 }
 
 export function buildPageList(doc) {

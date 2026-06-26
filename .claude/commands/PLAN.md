@@ -230,9 +230,9 @@ Estado global mínimo en un objeto `AppState` (no se necesita librería):
 - [ ] Guardar relleno en el PDF exportable
 
 ### Fase 6 — Herramientas (Sprint 6)
-- [ ] Búsqueda de texto (PDF.js text layer) → SearchPanel con highlights
-- [ ] Compresión PDF (reducción de imágenes embebidas + recompresión)
-- [ ] Modos de vista: página / continuo / ajustar ancho
+- [ ] Búsqueda de texto (PDF.js text layer) → SearchPanel con highlights, si esta seleccionado paginas continuas, la busqueda es en todo el pdf si no esta seleccionada, solo en la pagina seleccionada
+- [ ] Compresión PDF (reducción de imágenes embebidas + recompresión), mostrar un desplegable con un slider para seleccionar las opciones de compresion (low/medium/high)
+- [ ] Modos de vista: página / continuo / ajustar ancho / ajustar alto
 
 ### Fase 7 — Exportación & Pulido (Sprint 7)
 - [ ] Parser de rango de páginas: `1,3,5-8`
@@ -242,6 +242,9 @@ Estado global mínimo en un objeto `AppState` (no se necesita librería):
 - [ ] Atajos de teclado (Delete pages, Ctrl+Z undo, Ctrl+S export)
 - [ ] Estados de carga (skeleton loaders, progress bar)
 - [ ] Manejo de errores con toasts
+- [ ] Al importar el pdf (inicio del proceso) que la aplicacion cree automaticamente el campo titulo desde el title del pdf importado, si no tuviera queda con "Sín título"
+- [ ] Al exportar el pdf, el nombre del fichero por defecto sea el del titulo pero haciendo un slugfy, si no queda con export
+- [ ] añadir a los botones de seleccionar y arrastrar un fondo para resaltarlos en las miniaturas de las paginas
 
 ---
 

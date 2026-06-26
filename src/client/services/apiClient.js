@@ -101,3 +101,14 @@ export async function updateShape(sessionId, id, patch) {
 export async function deleteShape(sessionId, id) {
   return request('DELETE', `/shapes/${id}`, { sessionId })
 }
+
+export async function getFormValues(sessionId) {
+  const res = await fetch(`/api/pdf/form/fields/${sessionId}`)
+  const data = await res.json().catch(() => ({ success: false }))
+  if (!data.success) throw new Error(data.error ?? 'Failed to get form values')
+  return data.formValues
+}
+
+export async function fillFormFields(sessionId, formValues) {
+  return request('POST', '/form/fill', { sessionId, formValues })
+}

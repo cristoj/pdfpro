@@ -2,7 +2,7 @@ import { Router } from 'express'
 import fs from 'node:fs/promises'
 import { upload } from '../middleware/upload.js'
 import { createSession, getSession, updateSession } from '../services/sessionService.js'
-import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks, applyShapes } from '../services/pdfService.js'
+import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks, applyShapes, applyFormValues } from '../services/pdfService.js'
 import { parseRange } from '../../shared/pageRange.js'
 
 const router = Router()
@@ -74,6 +74,12 @@ router.post('/export', async (req, res, next) => {
       })
     } else {
       indices = doc.getPageIndices()
+    }
+
+    // Aplicar valores de formulario y aplanar antes de extraer páginas
+    if (session.formValues && Object.keys(session.formValues).length) {
+      await applyFormValues(doc, session.formValues)
+      try { doc.getForm().flatten() } catch { /* Sin formulario — ignorar */ }
     }
 
     const exportDoc = await extractPages(doc, indices)

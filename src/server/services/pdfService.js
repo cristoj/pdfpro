@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb, PDFTextField, PDFCheckBox, PDFDropdown, PDFRadioGroup } from 'pdf-lib'
 import fs from 'node:fs/promises'
 
 function hexToRgb(hex = '#000000') {
@@ -142,6 +142,37 @@ export async function applyShapes(doc, shapes) {
         borderColor,
         borderWidth,
       })
+    }
+  }
+
+  return doc
+}
+
+export async function applyFormValues(doc, formValues) {
+  if (!formValues || !Object.keys(formValues).length) return doc
+
+  let form
+  try {
+    form = doc.getForm()
+  } catch {
+    return doc
+  }
+
+  for (const [name, value] of Object.entries(formValues)) {
+    try {
+      const field = form.getField(name)
+      if (field instanceof PDFTextField) {
+        field.setText(String(value))
+      } else if (field instanceof PDFCheckBox) {
+        if (value === 'Yes' || value === true || value === 'true') field.check()
+        else field.uncheck()
+      } else if (field instanceof PDFDropdown) {
+        field.select(String(value))
+      } else if (field instanceof PDFRadioGroup) {
+        field.select(String(value))
+      }
+    } catch {
+      // Campo no encontrado o de solo lectura — ignorar
     }
   }
 

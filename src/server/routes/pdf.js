@@ -2,7 +2,7 @@ import { Router } from 'express'
 import fs from 'node:fs/promises'
 import { upload } from '../middleware/upload.js'
 import { createSession, getSession, updateSession } from '../services/sessionService.js'
-import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks, applyShapes, applyFormValues } from '../services/pdfService.js'
+import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks, applyShapes, applyFormValues, applyImages } from '../services/pdfService.js'
 import { parseRange } from '../../shared/pageRange.js'
 
 const router = Router()
@@ -98,6 +98,13 @@ router.post('/export', async (req, res, next) => {
         .filter(s => indexMap.has(s.pageIndex))
         .map(s => ({ ...s, pageIndex: indexMap.get(s.pageIndex) }))
       await applyShapes(exportDoc, shapes)
+    }
+
+    if (session.images?.length) {
+      const imgs = session.images
+        .filter(img => indexMap.has(img.pageIndex))
+        .map(img => ({ ...img, pageIndex: indexMap.get(img.pageIndex) }))
+      await applyImages(exportDoc, imgs)
     }
 
     const bytes = await exportDoc.save()

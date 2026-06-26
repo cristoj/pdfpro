@@ -199,6 +199,86 @@ router.delete('/shapes/:id', async (req, res, next) => {
   }
 })
 
+// ── Image blocks ──────────────────────────────────────────────
+
+router.get('/images/:sessionId', async (req, res, next) => {
+  try {
+    const session = getSession(req.params.sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+    res.json({ success: true, images: session.images ?? [] })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/images/add', async (req, res, next) => {
+  try {
+    const { sessionId, pageIndex, x, y, width, height, imageData, mimeType } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+    if (!imageData) return res.status(400).json({ success: false, error: 'imageData required' })
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+    const safeMime = validTypes.includes(mimeType) ? mimeType : 'image/png'
+
+    const image = {
+      id: uuidv4(),
+      pageIndex: Number(pageIndex) || 0,
+      x: Number(x) || 0,
+      y: Number(y) || 0,
+      width: Number(width) || 150,
+      height: Number(height) || 100,
+      imageData,
+      mimeType: safeMime,
+    }
+
+    updateSession(sessionId, { images: [...(session.images ?? []), image] })
+    res.json({ success: true, image })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.put('/images/:id', async (req, res, next) => {
+  try {
+    const { sessionId, x, y, width, height } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    const images = session.images ?? []
+    const idx = images.findIndex(img => img.id === req.params.id)
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Image not found' })
+
+    const patch = {}
+    if (x !== undefined) patch.x = Number(x)
+    if (y !== undefined) patch.y = Number(y)
+    if (width !== undefined) patch.width = Number(width)
+    if (height !== undefined) patch.height = Number(height)
+
+    const updated = [...images]
+    updated[idx] = { ...images[idx], ...patch }
+    updateSession(sessionId, { images: updated })
+    res.json({ success: true, image: updated[idx] })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/images/:id', async (req, res, next) => {
+  try {
+    const { sessionId } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    updateSession(sessionId, {
+      images: (session.images ?? []).filter(img => img.id !== req.params.id),
+    })
+    res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.get('/form/fields/:sessionId', async (req, res, next) => {
   try {
     const session = getSession(req.params.sessionId)

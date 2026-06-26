@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -17,11 +17,13 @@ const state = {
   pdfDoc: null,
   // Edit mode
   editMode: false,
-  activeTool: 'select',       // 'select' | 'addText' | 'addRect' | 'addCircle'
+  activeTool: 'select',       // 'select' | 'addText' | 'addRect' | 'addCircle' | 'addImage'
   textBlocks: [],              // { id, pageIndex, x, y, text, fontSize, fontFamily, bold, italic, color }
   selectedBlockId: null,
   shapes: [],                  // { id, type, pageIndex, x, y, width, height, fillColor, fillTransparent, strokeColor, strokeWidth }
   selectedShapeId: null,
+  images: [],                  // { id, pageIndex, x, y, width, height, imageData, mimeType }
+  selectedImageId: null,
   // Forms mode
   formsMode: false,
   formFields: [],              // { name, fieldType, pageIndex, rect, pageHeight, checkBox, radioButton, options, multiSelect, defaultValue }
@@ -79,6 +81,8 @@ const toolSelectBtn = $('tool-select')
 const toolAddTextBtn = $('tool-add-text')
 const toolRectBtn = $('tool-rect')
 const toolCircleBtn = $('tool-circle')
+const toolAddImageBtn = $('tool-add-image')
+const imageFileInput = $('image-file-input')
 const fontFamilySelect = $('font-family-select')
 const fontSizeInput = $('font-size-input')
 const btnBold = $('btn-bold')
@@ -178,6 +182,10 @@ async function handleFiles(files, { forceNew = false } = {}) {
 
     state.shapes = state.sessionId
       ? await getShapes(state.sessionId).catch(() => [])
+      : []
+
+    state.images = state.sessionId
+      ? await getImages(state.sessionId).catch(() => [])
       : []
 
     state.formValues = state.sessionId
@@ -317,7 +325,7 @@ function renderThumbnailsPlaceholder() {
 
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
-  const thumbs = $$('[data-page]')
+  const thumbs = $$('canvas[data-page]')
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const fallbackW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
 
@@ -845,6 +853,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 't' || e.key === 'T') setActiveTool('addText')
     if (e.key === 'r' || e.key === 'R') setActiveTool('addRect')
     if (e.key === 'c' || e.key === 'C') setActiveTool('addCircle')
+    if ((e.key === 'i' || e.key === 'I') && state.sessionId) imageFileInput?.click()
   }
 })
 
@@ -1024,9 +1033,11 @@ function setEditMode(on) {
   btnEdit.classList.toggle('toolbar-btn--active', on)
   textLayer.classList.toggle('edit-active', on)
   if (on && state.formsMode) setFormsMode(false)
+  if (on && state.viewMode !== 'page') setViewMode('page')
   if (!on) {
     deselectTextBlock()
     deselectShape()
+    deselectImage()
     setActiveTool('select')
   }
 }
@@ -1037,6 +1048,7 @@ function setActiveTool(tool) {
   toolAddTextBtn.classList.toggle('tool-btn--active', tool === 'addText')
   toolRectBtn.classList.toggle('tool-btn--active', tool === 'addRect')
   toolCircleBtn.classList.toggle('tool-btn--active', tool === 'addCircle')
+  toolAddImageBtn?.classList.toggle('tool-btn--active', tool === 'addImage')
   textLayer.classList.toggle('add-text-cursor', tool === 'addText' || tool === 'addRect' || tool === 'addCircle')
 
   const isShapeTool = tool === 'addRect' || tool === 'addCircle'
@@ -1053,6 +1065,67 @@ toolSelectBtn.addEventListener('click', () => setActiveTool('select'))
 toolAddTextBtn.addEventListener('click', () => setActiveTool('addText'))
 toolRectBtn.addEventListener('click', () => setActiveTool('addRect'))
 toolCircleBtn.addEventListener('click', () => setActiveTool('addCircle'))
+toolAddImageBtn?.addEventListener('click', () => {
+  if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
+  imageFileInput?.click()
+})
+
+imageFileInput?.addEventListener('change', e => {
+  const file = e.target.files?.[0]
+  if (!file || !state.sessionId) return
+  imageFileInput.value = ''
+
+  const reader = new FileReader()
+  reader.onload = async ev => {
+    const dataUrl = ev.target.result
+    const mimeType = file.type || 'image/png'
+
+    const naturalImg = new Image()
+    naturalImg.onload = async () => {
+      const aspect = naturalImg.naturalWidth / naturalImg.naturalHeight
+      const maxW = Math.min(300, (state.pageWidthPt || 595) * 0.5)
+      const w = maxW
+      const h = w / aspect
+
+      const x = ((state.pageWidthPt || 595) - w) / 2
+      const y = ((state.pageHeightPt || 842) - h) / 2
+
+      const tempId = `tmp-img-${Date.now()}`
+      const imgData = {
+        id: tempId,
+        pageIndex: state.currentPage - 1,
+        x, y, width: w, height: h,
+        imageData: dataUrl,
+        mimeType,
+      }
+
+      state.images.push(imgData)
+      createImageElement(imgData)
+      selectImage(tempId)
+      setActiveTool('select')
+
+      try {
+        const { image: saved } = await addImage(state.sessionId, {
+          pageIndex: imgData.pageIndex,
+          x, y, width: w, height: h,
+          imageData: dataUrl,
+          mimeType,
+        })
+        const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+        Object.assign(imgData, saved)
+        if (el) el.dataset.id = imgData.id
+        if (state.selectedImageId === tempId) state.selectedImageId = imgData.id
+      } catch {
+        state.images = state.images.filter(i => i.id !== tempId)
+        const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+        if (el) el.remove()
+        showToast('Error al añadir imagen', 'error')
+      }
+    }
+    naturalImg.src = dataUrl
+  }
+  reader.readAsDataURL(file)
+})
 
 // ── Typography controls ───────────────────────────────────────
 function syncTypographyUI() {
@@ -1191,6 +1264,7 @@ function renderEditOverlay() {
   textLayer.innerHTML = ''
   const pageIdx = state.currentPage - 1
 
+  state.images.filter(img => img.pageIndex === pageIdx).forEach(img => createImageElement(img))
   state.shapes.filter(s => s.pageIndex === pageIdx).forEach(shape => createShapeElement(shape))
   state.textBlocks.filter(b => b.pageIndex === pageIdx).forEach(block => createBlockElement(block))
 
@@ -1423,6 +1497,7 @@ function rerenderShape(shape) {
 function selectShape(id) {
   deselectShape()
   deselectTextBlock()
+  deselectImage()
   state.selectedShapeId = id
   const el = textLayer.querySelector(`[data-id="${id}"]`)
   if (el) el.classList.add('shape-block--selected')
@@ -1447,7 +1522,7 @@ function deselectShape() {
     if (el) el.classList.remove('shape-block--selected')
   }
   state.selectedShapeId = null
-  if (!state.selectedBlockId) {
+  if (!state.selectedBlockId && !state.selectedImageId) {
     btnDeleteBlock.style.display = 'none'
     if (!['addRect', 'addCircle'].includes(state.activeTool)) showShapeControls(false)
   }
@@ -1463,6 +1538,178 @@ async function removeShape(id) {
   }
 }
 
+// ── Image blocks ──────────────────────────────────────────────
+
+function imageOverlayStyle(img) {
+  const left = img.x * state.zoom
+  const top = (state.pageHeightPt - img.y - img.height) * state.zoom
+  const width = img.width * state.zoom
+  const height = img.height * state.zoom
+  return `left:${left}px;top:${top}px;width:${width}px;height:${height}px;`
+}
+
+function createImageElement(img) {
+  const el = document.createElement('div')
+  el.className = 'image-block'
+  el.dataset.id = img.id
+  el.dataset.kind = 'image'
+  el.setAttribute('style', imageOverlayStyle(img))
+
+  const imgEl = document.createElement('img')
+  imgEl.src = img.imageData
+  imgEl.className = 'image-block-img'
+  imgEl.draggable = false
+  el.appendChild(imgEl)
+
+  const HANDLES = ['tl', 'tc', 'tr', 'ml', 'mr', 'bl', 'bc', 'br']
+  for (const h of HANDLES) {
+    const handle = document.createElement('div')
+    handle.className = 'shape-handle'
+    handle.dataset.handle = h
+    handle.addEventListener('mousedown', e => {
+      e.stopPropagation()
+      startImageResize(e, img, el, h)
+    })
+    el.appendChild(handle)
+  }
+
+  el.addEventListener('mousedown', e => {
+    if (!state.editMode) return
+    e.stopPropagation()
+    if (e.target.classList.contains('shape-handle')) return
+
+    selectImage(img.id)
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startLeft = parseFloat(el.style.left) || 0
+    const startTop = parseFloat(el.style.top) || 0
+    let dragging = false
+
+    const onMove = me => {
+      const dx = me.clientX - startX
+      const dy = me.clientY - startY
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 4) return
+      dragging = true
+      el.classList.add('image-block--dragging')
+      el.style.left = (startLeft + dx) + 'px'
+      el.style.top = (startTop + dy) + 'px'
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      el.classList.remove('image-block--dragging')
+      if (!dragging) return
+
+      const left = parseFloat(el.style.left)
+      const top = parseFloat(el.style.top)
+      img.x = left / state.zoom
+      img.y = state.pageHeightPt - top / state.zoom - img.height
+      if (state.sessionId) {
+        updateImage(state.sessionId, img.id, { x: img.x, y: img.y }).catch(() => {
+          el.setAttribute('style', imageOverlayStyle(img))
+        })
+      }
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
+
+  textLayer.appendChild(el)
+  return el
+}
+
+function startImageResize(e, img, el, handle) {
+  e.preventDefault()
+  selectImage(img.id)
+  const startX = e.clientX
+  const startY = e.clientY
+  const startLeft = parseFloat(el.style.left) || 0
+  const startTop = parseFloat(el.style.top) || 0
+  const startWidth = parseFloat(el.style.width) || 0
+  const startHeight = parseFloat(el.style.height) || 0
+  const MIN = 20
+
+  const onMove = me => {
+    const dx = me.clientX - startX
+    const dy = me.clientY - startY
+    let left = startLeft, top = startTop, width = startWidth, height = startHeight
+
+    if (handle.includes('l')) {
+      const nw = startWidth - dx
+      if (nw >= MIN) { left = startLeft + dx; width = nw }
+    }
+    if (handle.includes('r')) { width = Math.max(MIN, startWidth + dx) }
+    if (handle.includes('t')) {
+      const nh = startHeight - dy
+      if (nh >= MIN) { top = startTop + dy; height = nh }
+    }
+    if (handle.includes('b')) { height = Math.max(MIN, startHeight + dy) }
+
+    el.style.left = left + 'px'
+    el.style.top = top + 'px'
+    el.style.width = width + 'px'
+    el.style.height = height + 'px'
+  }
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+
+    const left = parseFloat(el.style.left)
+    const top = parseFloat(el.style.top)
+    const width = parseFloat(el.style.width)
+    const height = parseFloat(el.style.height)
+
+    img.width = width / state.zoom
+    img.height = height / state.zoom
+    img.x = left / state.zoom
+    img.y = state.pageHeightPt - top / state.zoom - img.height
+
+    if (state.sessionId) {
+      updateImage(state.sessionId, img.id, {
+        x: img.x, y: img.y, width: img.width, height: img.height,
+      }).catch(() => { el.setAttribute('style', imageOverlayStyle(img)) })
+    }
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+function selectImage(id) {
+  deselectTextBlock()
+  deselectShape()
+  state.selectedImageId = id
+  textLayer.querySelectorAll('.image-block').forEach(el => {
+    el.classList.toggle('image-block--selected', el.dataset.id === id)
+  })
+  btnDeleteBlock.style.display = 'flex'
+}
+
+function deselectImage() {
+  if (state.selectedImageId) {
+    const el = textLayer.querySelector(`[data-id="${state.selectedImageId}"]`)
+    if (el) el.classList.remove('image-block--selected')
+  }
+  state.selectedImageId = null
+  if (!state.selectedBlockId && !state.selectedShapeId) {
+    btnDeleteBlock.style.display = 'none'
+  }
+}
+
+async function removeImage(id) {
+  state.images = state.images.filter(i => i.id !== id)
+  if (state.selectedImageId === id) deselectImage()
+  const el = textLayer.querySelector(`[data-id="${id}"]`)
+  if (el) el.remove()
+  if (state.sessionId) {
+    await deleteImage(state.sessionId, id).catch(() => { })
+  }
+}
+
 function rerenderTextBlock(block) {
   const el = textLayer.querySelector(`[data-id="${block.id}"]`)
   if (!el) return
@@ -1472,6 +1719,7 @@ function rerenderTextBlock(block) {
 function selectTextBlock(id) {
   deselectTextBlock()
   deselectShape()
+  deselectImage()
   state.selectedBlockId = id
   const el = textLayer.querySelector(`[data-id="${id}"]`)
   if (el) el.classList.add('text-block--selected')
@@ -1497,7 +1745,9 @@ function deselectTextBlock() {
     if (el) el.classList.remove('text-block--selected')
   }
   state.selectedBlockId = null
-  btnDeleteBlock.style.display = 'none'
+  if (!state.selectedShapeId && !state.selectedImageId) {
+    btnDeleteBlock.style.display = 'none'
+  }
 }
 
 async function removeTextBlock(id) {
@@ -1512,6 +1762,7 @@ async function removeTextBlock(id) {
 btnDeleteBlock.addEventListener('click', () => {
   if (state.selectedBlockId) removeTextBlock(state.selectedBlockId)
   else if (state.selectedShapeId) removeShape(state.selectedShapeId)
+  else if (state.selectedImageId) removeImage(state.selectedImageId)
 })
 
 // ── Text layer mousedown — deselect al pulsar fondo vacío ─────
@@ -1520,6 +1771,7 @@ textLayer.addEventListener('mousedown', e => {
   if (e.target === textLayer) {
     deselectTextBlock()
     deselectShape()
+    deselectImage()
   }
 })
 

@@ -112,3 +112,22 @@ export async function getFormValues(sessionId) {
 export async function fillFormFields(sessionId, formValues) {
   return request('POST', '/form/fill', { sessionId, formValues })
 }
+
+export async function getImages(sessionId) {
+  const res = await fetch(`${BASE}/images/${sessionId}`)
+  const data = await res.json().catch(() => ({ success: false }))
+  if (!data.success) throw new Error(data.error ?? 'Failed to get images')
+  return data.images
+}
+
+export async function addImage(sessionId, imageData) {
+  return request('POST', '/images/add', { sessionId, ...imageData })
+}
+
+export async function updateImage(sessionId, id, patch) {
+  return request('PUT', `/images/${id}`, { sessionId, ...patch })
+}
+
+export async function deleteImage(sessionId, id) {
+  return request('DELETE', `/images/${id}`, { sessionId })
+}

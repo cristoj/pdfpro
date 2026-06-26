@@ -179,6 +179,41 @@ export async function applyFormValues(doc, formValues) {
   return doc
 }
 
+export async function applyImages(doc, images) {
+  if (!images?.length) return doc
+  const pages = doc.getPages()
+
+  for (const img of images) {
+    const page = pages[img.pageIndex]
+    if (!page) continue
+
+    try {
+      const base64 = img.imageData.includes(',')
+        ? img.imageData.split(',')[1]
+        : img.imageData
+      const bytes = Buffer.from(base64, 'base64')
+
+      let embedded
+      if (img.mimeType === 'image/jpeg' || img.mimeType === 'image/jpg') {
+        embedded = await doc.embedJpg(bytes)
+      } else {
+        embedded = await doc.embedPng(bytes)
+      }
+
+      page.drawImage(embedded, {
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+      })
+    } catch {
+      // Imagen inválida — ignorar
+    }
+  }
+
+  return doc
+}
+
 export function buildPageList(doc) {
   return Array.from({ length: doc.getPageCount() }, (_, i) => ({
     id: i,

@@ -10,7 +10,7 @@ const state = {
   currentPage: 1,
   totalPages: 0,
   zoom: 1.0,
-  viewMode: 'page',
+  viewMode: 'continuous',
   thumbnailSize: 'md',
   darkMode: localStorage.getItem('pdfpro_dark') === 'true',
   selection: [],
@@ -190,7 +190,22 @@ async function loadAndRenderPdf(file) {
   const arrayBuffer = await file.arrayBuffer()
   state.pdfDoc = await lib.getDocument({ data: arrayBuffer }).promise
   state.totalPages = state.pdfDoc.numPages
-  await renderPage(state.currentPage)
+
+  // Leer dimensiones de página 1 para cálculos de zoom
+  const firstPage = await state.pdfDoc.getPage(1)
+  const baseVp = firstPage.getViewport({ scale: 1 })
+  state.pageWidthPt = baseVp.width
+  state.pageHeightPt = baseVp.height
+
+  if (state.viewMode === 'continuous') {
+    canvasContainer.style.display = 'none'
+    continuousView.style.display = 'flex'
+    await renderContinuousView()
+  } else {
+    continuousView.style.display = 'none'
+    canvasContainer.style.display = 'inline-block'
+    await renderPage(state.currentPage)
+  }
 }
 
 async function renderPage(pageNum) {

@@ -176,10 +176,13 @@
         </div>
 
         <div id="pdf-canvas-wrapper" class="pdf-canvas-wrapper" style="display:none">
+          <!-- Vista página única -->
           <div id="canvas-container" class="canvas-container">
             <canvas id="pdf-canvas"></canvas>
             <div id="text-layer" class="text-layer"></div>
           </div>
+          <!-- Vista continua -->
+          <div id="continuous-view" class="continuous-view" style="display:none"></div>
         </div>
 
         <!-- VIEWER CONTROLS -->
@@ -197,12 +200,46 @@
             <button id="btn-zoom-out" class="control-btn" title="Alejar">−</button>
             <span id="zoom-level" class="zoom-display">100%</span>
             <button id="btn-zoom-in" class="control-btn" title="Acercar">+</button>
-            <button id="btn-fit" class="control-btn" title="Ajustar ancho">↔</button>
-            <button id="btn-view-page" class="control-btn control-btn--active" title="Página única">□</button>
-            <button id="btn-view-cont" class="control-btn" title="Vista continua">≡</button>
+            <button id="btn-fit-width" class="control-btn" title="Ajustar ancho">↔</button>
+            <button id="btn-fit-height" class="control-btn" title="Ajustar alto">↕</button>
+            <button id="btn-view-page" class="control-btn" title="Página única">□</button>
+            <button id="btn-view-cont" class="control-btn control-btn--active" title="Vista continua">≡</button>
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- COMPRESS PANEL OVERLAY -->
+    <div id="compress-panel" class="panel-overlay" style="display:none">
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3>Comprimir PDF</h3>
+          <button class="icon-btn panel-close" id="btn-close-compress">✕</button>
+        </div>
+        <div class="panel-body">
+          <label class="field-label">Nivel de compresión
+            <div class="compress-levels">
+              <button class="compress-level-btn compress-level-btn--active" data-level="low">
+                <span class="compress-level-name">Bajo</span>
+                <span class="compress-level-desc">Reempaqueta streams</span>
+              </button>
+              <button class="compress-level-btn" data-level="medium">
+                <span class="compress-level-name">Medio</span>
+                <span class="compress-level-desc">Elimina metadatos</span>
+              </button>
+              <button class="compress-level-btn" data-level="high">
+                <span class="compress-level-name">Alto</span>
+                <span class="compress-level-desc">Elimina miniaturas</span>
+              </button>
+            </div>
+          </label>
+          <p id="compress-result" class="field-hint" style="display:none"></p>
+        </div>
+        <div class="panel-footer">
+          <button class="btn-secondary" id="btn-cancel-compress">Cancelar</button>
+          <button class="btn-primary" id="btn-confirm-compress">Comprimir ahora</button>
+        </div>
+      </div>
     </div>
 
     <!-- EXPORT PANEL OVERLAY -->

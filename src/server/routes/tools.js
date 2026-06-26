@@ -7,11 +7,13 @@ const router = Router()
 
 router.post('/compress', async (req, res, next) => {
   try {
-    const { sessionId } = req.body
+    const { sessionId, level = 'medium' } = req.body
     const session = getSession(sessionId)
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
 
-    const newSize = await compressPdf(session.filePath)
+    const validLevels = ['low', 'medium', 'high']
+    const safeLevel = validLevels.includes(level) ? level : 'medium'
+    const newSize = await compressPdf(session.filePath, safeLevel)
     res.json({ success: true, sizeBytes: newSize })
   } catch (err) {
     next(err)

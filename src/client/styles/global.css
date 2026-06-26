@@ -1063,6 +1063,76 @@ html, body {
   padding: var(--space-2) 0;
 }
 
+/* ── Shape blocks ─────────────────────────────────────── */
+.shape-block {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.text-layer.edit-active .shape-block {
+  cursor: grab;
+}
+
+.shape-block--selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.shape-block--circle {
+  border-radius: 50%;
+}
+
+.shape-block--dragging {
+  cursor: grabbing !important;
+  opacity: 0.85;
+}
+
+/* Resize handles */
+.shape-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 2px;
+  display: none;
+  z-index: 2;
+}
+
+.shape-block--selected .shape-handle {
+  display: block;
+}
+
+.shape-handle[data-handle="tl"] { top: -4px; left: -4px; cursor: nw-resize; }
+.shape-handle[data-handle="tc"] { top: -4px; left: calc(50% - 4px); cursor: n-resize; }
+.shape-handle[data-handle="tr"] { top: -4px; right: -4px; cursor: ne-resize; }
+.shape-handle[data-handle="ml"] { top: calc(50% - 4px); left: -4px; cursor: w-resize; }
+.shape-handle[data-handle="mr"] { top: calc(50% - 4px); right: -4px; cursor: e-resize; }
+.shape-handle[data-handle="bl"] { bottom: -4px; left: -4px; cursor: sw-resize; }
+.shape-handle[data-handle="bc"] { bottom: -4px; left: calc(50% - 4px); cursor: s-resize; }
+.shape-handle[data-handle="br"] { bottom: -4px; right: -4px; cursor: se-resize; }
+
+/* Shape toolbar controls */
+.shape-no-fill-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.shape-no-fill-cb {
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.shape-no-fill-text {
+  user-select: none;
+}
+
 /* ── Utilities ────────────────────────────────────────── */
 .hidden {
   display: none !important;

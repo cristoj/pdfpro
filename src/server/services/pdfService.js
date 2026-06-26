@@ -107,6 +107,47 @@ export async function applyTextBlocks(doc, textBlocks) {
   return doc
 }
 
+export async function applyShapes(doc, shapes) {
+  if (!shapes?.length) return doc
+  const pages = doc.getPages()
+
+  for (const shape of shapes) {
+    const page = pages[shape.pageIndex]
+    if (!page) continue
+
+    const fillColor = hexToRgb(shape.fillColor ?? '#ffffff')
+    const borderColor = hexToRgb(shape.strokeColor ?? '#000000')
+    const borderWidth = shape.strokeWidth ?? 2
+    const opacity = shape.fillTransparent ? 0 : 1
+
+    if (shape.type === 'rect') {
+      page.drawRectangle({
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        color: fillColor,
+        opacity,
+        borderColor,
+        borderWidth,
+      })
+    } else if (shape.type === 'circle') {
+      page.drawEllipse({
+        x: shape.x + shape.width / 2,
+        y: shape.y + shape.height / 2,
+        xScale: shape.width / 2,
+        yScale: shape.height / 2,
+        color: fillColor,
+        opacity,
+        borderColor,
+        borderWidth,
+      })
+    }
+  }
+
+  return doc
+}
+
 export function buildPageList(doc) {
   return Array.from({ length: doc.getPageCount() }, (_, i) => ({
     id: i,

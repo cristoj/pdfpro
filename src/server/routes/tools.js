@@ -114,6 +114,89 @@ router.delete('/text/:id', async (req, res, next) => {
   }
 })
 
+// ── Shape blocks ──────────────────────────────────────────────
+
+router.get('/shapes/:sessionId', async (req, res, next) => {
+  try {
+    const session = getSession(req.params.sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+    res.json({ success: true, shapes: session.shapes ?? [] })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/shapes/add', async (req, res, next) => {
+  try {
+    const { sessionId, type, pageIndex, x, y, width, height, fillColor, fillTransparent, strokeColor, strokeWidth } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    const shape = {
+      id: uuidv4(),
+      type: type === 'circle' ? 'circle' : 'rect',
+      pageIndex: Number(pageIndex) || 0,
+      x: Number(x) || 0,
+      y: Number(y) || 0,
+      width: Number(width) || 100,
+      height: Number(height) || 100,
+      fillColor: fillColor || '#ffffff',
+      fillTransparent: Boolean(fillTransparent),
+      strokeColor: strokeColor || '#000000',
+      strokeWidth: Number(strokeWidth) || 2,
+    }
+
+    updateSession(sessionId, { shapes: [...(session.shapes ?? []), shape] })
+    res.json({ success: true, shape })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.put('/shapes/:id', async (req, res, next) => {
+  try {
+    const { sessionId, x, y, width, height, fillColor, fillTransparent, strokeColor, strokeWidth } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    const shapes = session.shapes ?? []
+    const idx = shapes.findIndex(s => s.id === req.params.id)
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Shape not found' })
+
+    const patch = {}
+    if (x !== undefined) patch.x = Number(x)
+    if (y !== undefined) patch.y = Number(y)
+    if (width !== undefined) patch.width = Number(width)
+    if (height !== undefined) patch.height = Number(height)
+    if (fillColor !== undefined) patch.fillColor = fillColor
+    if (fillTransparent !== undefined) patch.fillTransparent = Boolean(fillTransparent)
+    if (strokeColor !== undefined) patch.strokeColor = strokeColor
+    if (strokeWidth !== undefined) patch.strokeWidth = Number(strokeWidth)
+
+    const updated = [...shapes]
+    updated[idx] = { ...shapes[idx], ...patch }
+    updateSession(sessionId, { shapes: updated })
+    res.json({ success: true, shape: updated[idx] })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/shapes/:id', async (req, res, next) => {
+  try {
+    const { sessionId } = req.body
+    const session = getSession(sessionId)
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
+
+    updateSession(sessionId, {
+      shapes: (session.shapes ?? []).filter(s => s.id !== req.params.id),
+    })
+    res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/form/fill', async (req, res, next) => {
   try {
     res.status(501).json({ success: false, error: 'Not implemented yet' })

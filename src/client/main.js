@@ -325,7 +325,7 @@ function renderThumbnailsPlaceholder() {
 
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
-  const thumbs = $$('[data-page]')
+  const thumbs = $$('canvas[data-page]')
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const fallbackW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
 

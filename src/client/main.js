@@ -243,7 +243,7 @@ function renderThumbnailsPlaceholder() {
 async function renderThumbnailCanvases() {
   if (!state.pdfDoc) return
   const thumbs = $$('[data-page]')
-  const dpr = window.devicePixelRatio || 1
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const fallbackW = { sm: 80, md: 110, lg: 200 }[state.thumbnailSize]
 
   for (const canvasEl of thumbs) {
@@ -643,7 +643,7 @@ function applyTypographyToSelected() {
       bold: block.bold,
       italic: block.italic,
       color: block.color,
-    }).catch(() => {})
+    }).catch(() => { })
   }
 }
 
@@ -673,7 +673,7 @@ function applyShapeStyleToSelected() {
       fillTransparent: shape.fillTransparent,
       strokeColor: shape.strokeColor,
       strokeWidth: shape.strokeWidth,
-    }).catch(() => {})
+    }).catch(() => { })
   }
 }
 
@@ -781,7 +781,7 @@ function createBlockElement(block) {
       dragging = true
       el.classList.add('text-block--dragging')
       el.style.left = (startLeft + dx) + 'px'
-      el.style.top  = (startTop  + dy) + 'px'
+      el.style.top = (startTop + dy) + 'px'
     }
 
     const onUp = () => {
@@ -864,7 +864,7 @@ function createShapeElement(shape) {
       dragging = true
       el.classList.add('shape-block--dragging')
       el.style.left = (startLeft + dx) + 'px'
-      el.style.top  = (startTop + dy) + 'px'
+      el.style.top = (startTop + dy) + 'px'
     }
 
     const onUp = () => {
@@ -996,7 +996,7 @@ async function removeShape(id) {
   const el = textLayer.querySelector(`[data-id="${id}"]`)
   if (el) el.remove()
   if (state.sessionId) {
-    await deleteShape(state.sessionId, id).catch(() => {})
+    await deleteShape(state.sessionId, id).catch(() => { })
   }
 }
 
@@ -1042,7 +1042,7 @@ async function removeTextBlock(id) {
   if (state.selectedBlockId === id) deselectTextBlock()
   renderTextOverlay()
   if (state.sessionId) {
-    await deleteTextBlock(state.sessionId, id).catch(() => {})
+    await deleteTextBlock(state.sessionId, id).catch(() => { })
   }
 }
 
@@ -1092,15 +1092,10 @@ textLayer.addEventListener('click', async e => {
     if (state.sessionId) {
       try {
         const { shape: saved } = await addShape(state.sessionId, shape)
-        const idx = state.shapes.findIndex(s => s.id === tempId)
-        if (idx !== -1) {
-          state.shapes[idx] = saved
-          const el = textLayer.querySelector(`[data-id="${tempId}"]`)
-          if (el) {
-            el.dataset.id = saved.id
-            if (state.selectedShapeId === tempId) state.selectedShapeId = saved.id
-          }
-        }
+        const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+        Object.assign(shape, saved)
+        if (el) el.dataset.id = shape.id
+        if (state.selectedShapeId === tempId) state.selectedShapeId = shape.id
       } catch {
         state.shapes = state.shapes.filter(s => s.id !== tempId)
         const el = textLayer.querySelector(`[data-id="${tempId}"]`)
@@ -1157,12 +1152,9 @@ textLayer.addEventListener('click', async e => {
           italic: block.italic,
           color: block.color,
         })
-        const idx = state.textBlocks.findIndex(b => b.id === tempId)
-        if (idx !== -1) {
-          state.textBlocks[idx] = saved
-          el.dataset.id = saved.id
-          if (state.selectedBlockId === tempId) state.selectedBlockId = saved.id
-        }
+        Object.assign(block, saved)
+        el.dataset.id = block.id
+        if (state.selectedBlockId === tempId) state.selectedBlockId = block.id
       } catch {
         state.textBlocks = state.textBlocks.filter(b => b.id !== tempId)
         el.remove()
@@ -1201,7 +1193,7 @@ function enterBlockEditMode(block, blockEl, content) {
     if (text === block.text) return
     block.text = text
     if (state.sessionId) {
-      await updateTextBlock(state.sessionId, block.id, { text }).catch(() => {})
+      await updateTextBlock(state.sessionId, block.id, { text }).catch(() => { })
     }
   }
   content.addEventListener('blur', commit, { once: true })

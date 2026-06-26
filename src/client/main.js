@@ -609,6 +609,7 @@ async function detectFormFields() {
         pageHeight,
         checkBox: ann.checkBox ?? false,
         radioButton: ann.radioButton ?? false,
+        buttonValue: ann.buttonValue ?? null, // valor de ESTE radio button específico
         options: ann.options ?? [],
         multiSelect: ann.multiSelect ?? false,
         defaultValue: ann.fieldValue ?? '',
@@ -638,26 +639,43 @@ function createFormFieldElement(field) {
     input.type = 'text'
     input.className = 'form-field-input'
     input.value = savedValue ?? field.defaultValue ?? ''
-    input.addEventListener('change', () => onFormValueChange(field.name, input.value))
     input.addEventListener('input', () => onFormValueChange(field.name, input.value))
   } else if (field.fieldType === 'Btn' && field.checkBox) {
     const cb = document.createElement('input')
     cb.type = 'checkbox'
     cb.className = 'form-field-checkbox'
-    cb.checked = (savedValue === 'Yes') || (savedValue === true) ||
-      (!savedValue && (field.defaultValue === 'Yes' || field.defaultValue === 'On'))
+    const isChecked = savedValue != null
+      ? (savedValue === 'Yes' || savedValue === true || savedValue === 'On')
+      : (field.defaultValue === 'Yes' || field.defaultValue === 'On')
+    cb.checked = isChecked
     cb.addEventListener('change', () => onFormValueChange(field.name, cb.checked ? 'Yes' : 'Off'))
     input = cb
+  } else if (field.fieldType === 'Btn' && field.radioButton) {
+    const radio = document.createElement('input')
+    radio.type = 'radio'
+    radio.className = 'form-field-radio'
+    // Agrupar todos los radios del mismo campo con el mismo name HTML
+    radio.name = `pdf-radio-${field.name}`
+    radio.value = field.buttonValue ?? ''
+    const currentVal = savedValue ?? field.defaultValue ?? ''
+    radio.checked = radio.value !== '' && radio.value !== 'Off' && currentVal === radio.value
+    radio.addEventListener('change', () => {
+      if (radio.checked) onFormValueChange(field.name, radio.value)
+    })
+    input = radio
   } else if (field.fieldType === 'Ch' && !field.multiSelect) {
     const sel = document.createElement('select')
     sel.className = 'form-field-select'
+    sel.size = 1  // Forzar dropdown (evita renderizado como listbox por height)
+    const currentVal = savedValue ?? field.defaultValue ?? ''
     for (const opt of field.options) {
       const o = document.createElement('option')
-      o.value = opt.exportValue ?? opt
-      o.textContent = opt.displayValue ?? opt
-      if ((savedValue ?? field.defaultValue) === o.value) o.selected = true
+      o.value = opt.exportValue ?? String(opt)
+      o.textContent = opt.displayValue ?? String(opt)
+      if (o.value === currentVal) o.selected = true
       sel.appendChild(o)
     }
+    sel.value = currentVal
     sel.addEventListener('change', () => onFormValueChange(field.name, sel.value))
     input = sel
   }

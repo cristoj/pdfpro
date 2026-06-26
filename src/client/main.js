@@ -95,6 +95,36 @@ const btnDeleteBlock = $('btn-delete-block')
 const btnEdit = $('btn-edit')
 const btnForms = $('btn-forms')
 
+// ── Utilities ────────────────────────────────────────────────
+function slugify(str) {
+  return str
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'export'
+}
+
+function showToast(message, type = 'info') {
+  const container = $('toast-container')
+  const toast = document.createElement('div')
+  toast.className = `toast toast--${type}`
+  const icon = type === 'error' ? '✕' : type === 'success' ? '✓' : 'ℹ'
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <span class="toast-message">${message}</span>
+    <button class="toast-close" aria-label="Cerrar">✕</button>
+  `
+  const dismiss = () => {
+    toast.classList.add('toast--out')
+    setTimeout(() => toast.remove(), 250)
+  }
+  toast.querySelector('.toast-close').addEventListener('click', dismiss)
+  container.appendChild(toast)
+  setTimeout(dismiss, 4500)
+}
+
 // ── Dark Mode ────────────────────────────────────────────────
 function applyDarkMode(dark) {
   document.documentElement.classList.toggle('dark', dark)
@@ -164,7 +194,7 @@ async function handleFiles(files, { forceNew = false } = {}) {
     renderThumbnailsPlaceholder()
     updatePageControls()
   } catch (err) {
-    alert(`Error al cargar el PDF: ${err.message}`)
+    showToast(`Error al cargar el PDF: ${err.message}`, 'error')
   } finally {
     setLoading(false)
   }
@@ -190,6 +220,16 @@ async function loadAndRenderPdf(file) {
   const arrayBuffer = await file.arrayBuffer()
   state.pdfDoc = await lib.getDocument({ data: arrayBuffer }).promise
   state.totalPages = state.pdfDoc.numPages
+
+  // Extraer título desde metadatos del PDF o usar el nombre del fichero
+  try {
+    const meta = await state.pdfDoc.getMetadata()
+    const pdfTitle = meta?.info?.Title?.trim()
+    const fileTitle = file.name.replace(/\.pdf$/i, '').trim()
+    $('filename').value = pdfTitle || fileTitle || 'Sin título'
+  } catch {
+    $('filename').value = file.name.replace(/\.pdf$/i, '').trim() || 'Sin título'
+  }
 
   // Leer dimensiones de página 1 para cálculos de zoom
   const firstPage = await state.pdfDoc.getPage(1)
@@ -249,7 +289,9 @@ function renderThumbnailsPlaceholder() {
       <div class="page-thumb-canvas-wrapper">
         <canvas data-page="${i + 1}"></canvas>
       </div>
-      <input type="checkbox" class="page-thumb-checkbox" data-index="${i}" />
+      <div class="page-thumb-checkbox-wrap">
+        <input type="checkbox" class="page-thumb-checkbox" data-index="${i}" />
+      </div>
       <div class="page-thumb-index">${i + 1}</div>
     `
     thumb.addEventListener('click', e => {
@@ -358,7 +400,7 @@ async function deleteSelection() {
     updatePageControls()
     updateSelectionBar()
   } catch (err) {
-    alert(`Error al eliminar páginas: ${err.message}`)
+    showToast(`Error al eliminar páginas: ${err.message}`, 'error')
   } finally {
     setLoading(false)
   }
@@ -403,7 +445,7 @@ function initSortable() {
         await renderPage(state.currentPage)
         updatePageControls()
       } catch (err) {
-        alert(`Error al reordenar: ${err.message}`)
+        showToast(`Error al reordenar: ${err.message}`, 'error')
         renderThumbnailsPlaceholder()
       } finally {
         setLoading(false)
@@ -553,6 +595,8 @@ btnAddPdf.addEventListener('click', () => {
 btnExport.addEventListener('click', () => {
   if (!state.sessionId) return
   $('export-page-count').textContent = `Total: ${state.totalPages} páginas`
+  const title = $('filename').value.trim()
+  $('export-filename').value = title ? `${slugify(title)}.pdf` : 'export.pdf'
   exportPanel.style.display = 'flex'
 })
 
@@ -775,6 +819,24 @@ document.addEventListener('keydown', e => {
   if (document.activeElement?.contentEditable === 'true') return
 
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch() }
+
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault()
+    if (state.sessionId) {
+      const title = $('filename').value.trim()
+      $('export-filename').value = title ? `${slugify(title)}.pdf` : 'export.pdf'
+      $('export-page-count').textContent = `Total: ${state.totalPages} páginas`
+      exportPanel.style.display = 'flex'
+    }
+    return
+  }
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !state.editMode && state.selection.length) {
+    e.preventDefault()
+    deleteSelection()
+    return
+  }
+
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigateTo(state.currentPage - 1)
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigateTo(state.currentPage + 1)
 
@@ -821,6 +883,7 @@ document.addEventListener('mouseup', () => {
 // ── Loading ───────────────────────────────────────────────────
 function setLoading(on) {
   document.body.style.cursor = on ? 'wait' : _resizing ? 'col-resize' : ''
+  $('loading-bar').classList.toggle('loading-bar--visible', on)
 }
 
 // ── Forms mode ────────────────────────────────────────────────

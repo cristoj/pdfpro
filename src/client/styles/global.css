@@ -1436,16 +1436,16 @@ html, body {
 
 /* ── Thumbnail handle & checkbox backgrounds ──────────── */
 .page-thumb-handle {
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(0,0,0,0.08);
+  background: #D1D5DB;
+  border: 1px solid rgba(0,0,0,0.12);
   border-radius: var(--radius-sm);
   padding: 2px 3px;
   box-shadow: var(--shadow-sm);
 }
 
 .dark .page-thumb-handle {
-  background: rgba(30,41,59,0.88);
-  border-color: rgba(255,255,255,0.1);
+  background: rgba(30,41,59,0.92);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .page-thumb-checkbox-wrap {
@@ -1458,8 +1458,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(0,0,0,0.08);
+  background: #D1D5DB;
+  border: 1px solid rgba(0,0,0,0.12);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
   opacity: 0;
@@ -1467,8 +1467,8 @@ html, body {
 }
 
 .dark .page-thumb-checkbox-wrap {
-  background: rgba(30,41,59,0.88);
-  border-color: rgba(255,255,255,0.1);
+  background: rgba(30,41,59,0.92);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .page-thumb:hover .page-thumb-checkbox-wrap,

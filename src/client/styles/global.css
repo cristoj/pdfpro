@@ -405,20 +405,7 @@ html, body {
   opacity: 1;
 }
 
-.page-thumb-checkbox {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
-  z-index: 2;
-  opacity: 0;
-  transition: opacity var(--duration-fast);
-  accent-color: var(--color-accent);
-}
-
-.page-thumb:hover .page-thumb-checkbox,
-  .page-thumb.selected .page-thumb-checkbox {
-  opacity: 1;
-}
+/* .page-thumb-checkbox styles moved to end of file (inside .page-thumb-checkbox-wrap) */
 
 .badge-interactive {
   position: absolute;
@@ -1328,4 +1315,173 @@ html, body {
 /* ── Utilities ────────────────────────────────────────── */
 .hidden {
   display: none !important;
+}
+
+/* ── Loading bar ──────────────────────────────────────── */
+.loading-bar {
+  position: fixed;
+  top: var(--toolbar-height);
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 300;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.loading-bar--visible {
+  opacity: 1;
+}
+
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--color-accent);
+  animation: loading-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+  0%   { left: -45%; width: 35%; }
+  60%  { left: 30%;  width: 55%; }
+  100% { left: 105%; width: 35%; }
+}
+
+/* ── Toast notifications ──────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  min-width: 240px;
+  max-width: 380px;
+  pointer-events: auto;
+  animation: toast-in 0.2s var(--ease-out);
+}
+
+.toast--out {
+  animation: toast-out 0.22s var(--ease-out) forwards;
+}
+
+.toast--error {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger);
+}
+
+.toast--success {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success);
+}
+
+.toast-icon {
+  font-size: var(--text-base);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.toast--error .toast-icon   { color: var(--color-danger); }
+.toast--success .toast-icon { color: var(--color-success); }
+.toast--info .toast-icon    { color: var(--color-accent); }
+
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  padding: 2px;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity var(--duration-fast);
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+/* ── Thumbnail handle & checkbox backgrounds ──────────── */
+.page-thumb-handle {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: var(--radius-sm);
+  padding: 2px 3px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dark .page-thumb-handle {
+  background: rgba(30,41,59,0.88);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.page-thumb-checkbox-wrap {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.dark .page-thumb-checkbox-wrap {
+  background: rgba(30,41,59,0.88);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.page-thumb:hover .page-thumb-checkbox-wrap,
+.page-thumb.selected .page-thumb-checkbox-wrap {
+  opacity: 1;
+}
+
+.page-thumb-checkbox {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  opacity: 1;
+  margin: 0;
+  accent-color: var(--color-accent);
 }

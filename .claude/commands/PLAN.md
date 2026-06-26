@@ -193,58 +193,67 @@ Estado global mínimo en un objeto `AppState` (no se necesita librería):
 ## 5. Fases de Implementación
 
 ### Fase 1 — Infraestructura (Sprint 1)
-- [ ] Inicializar proyecto Node.js 22 + package.json
-- [ ] Configurar Express 5 con rutas base
-- [ ] Configurar Vite 6 + Tailwind v4
-- [ ] Layout shell HTML/CSS (Toolbar + sidebar + main)
-- [ ] Tokens CSS + dark mode toggle funcional
-- [ ] Variables de entorno (.env)
+- [x] Inicializar proyecto Node.js 22 + package.json
+- [x] Configurar Express 5 con rutas base
+- [x] Configurar Vite 6 + Tailwind v4
+- [x] Layout shell HTML/CSS (Toolbar + sidebar + main)
+- [x] Tokens CSS + dark mode toggle funcional
+- [x] Variables de entorno (.env)
 
 ### Fase 2 — Upload & Visor (Sprint 2)
-- [ ] Endpoint POST /api/pdf/upload con Multer
-- [ ] Integración PDF.js en cliente (render página a canvas)
-- [ ] Generación de miniaturas por página en sidebar
-- [ ] Navegación básica (prev/next, número de página)
-- [ ] Controles de zoom (25%–400%) + fit-width
+- [x] Endpoint POST /api/pdf/upload con Multer
+- [x] Integración PDF.js en cliente (render página a canvas)
+- [x] Generación de miniaturas por página en sidebar
+- [x] Navegación básica (prev/next, número de página)
+- [x] Controles de zoom (25%–400%) + fit-width
 
 ### Fase 3 — Gestión de Páginas (Sprint 3)
-- [ ] Drag & drop de miniaturas con SortableJS → POST /api/pdf/reorder
-- [ ] Input numérico para mover página a destino concreto
-- [ ] Multi-selección de páginas (checkbox + shift+click)
-- [ ] Eliminar página(s) seleccionadas
-- [ ] Botón "Añadir más PDFs" → merge con pdf-lib
-- [ ] Slider tamaño miniaturas (3 tamaños)
+- [x] Drag & drop de miniaturas con SortableJS → POST /api/pdf/reorder
+- [x] Input numérico para mover página a destino concreto
+- [x] Multi-selección de páginas (checkbox + shift+click)
+- [x] Eliminar página(s) seleccionadas
+- [x] Botón "Añadir más PDFs" → merge con pdf-lib
+- [x] Slider tamaño miniaturas (3 tamaños)
 
 ### Fase 4 — Edición de Texto (Sprint 4)
-- [ ] Canvas overlay sobre el visor para texto
-- [ ] Herramienta "Añadir Texto": click en PDF → textarea flotante
-- [ ] Guardar texto como anotación en pdf-lib
-- [ ] Herramienta "Editar Texto": click sobre bloque existente
-- [ ] Herramienta "Eliminar Bloque"
-- [ ] Controles tipografía (fuente, tamaño, bold, italic)
+- [x] Canvas overlay sobre el visor para texto
+- [x] Herramienta "Añadir Texto": click en PDF → textarea flotante
+- [x] Guardar texto como anotación en pdf-lib
+- [x] Herramienta "Editar Texto": click sobre bloque existente
+- [x] Herramienta "Eliminar Bloque"
+- [x] Controles tipografía (fuente, tamaño, bold, italic)
 
 ### Fase 5 — Formularios (Sprint 5)
-- [ ] Detectar campos de formulario con pdf-lib
-- [ ] Overlay de inputs HTML sobre campos del PDF
-- [ ] Rellenar y persistir valores en sesión
-- [ ] Guardar relleno en el PDF exportable
+- [x] Detectar campos de formulario con pdf-lib
+- [x] Overlay de inputs HTML sobre campos del PDF
+- [x] Rellenar y persistir valores en sesión
+- [x] Guardar relleno en el PDF exportable
 
 ### Fase 6 — Herramientas (Sprint 6)
-- [ ] Búsqueda de texto (PDF.js text layer) → SearchPanel con highlights, si esta seleccionado paginas continuas, la busqueda es en todo el pdf si no esta seleccionada, solo en la pagina seleccionada
-- [ ] Compresión PDF (reducción de imágenes embebidas + recompresión), mostrar un desplegable con un slider para seleccionar las opciones de compresion (low/medium/high)
-- [ ] Modos de vista: página / continuo / ajustar ancho / ajustar alto
+- [x] Búsqueda de texto (PDF.js text layer) → SearchPanel con highlights, si esta seleccionado paginas continuas, la busqueda es en todo el pdf si no esta seleccionada, solo en la pagina seleccionada
+- [x] Compresión PDF (reducción de imágenes embebidas + recompresión), mostrar un desplegable con un slider para seleccionar las opciones de compresion (low/medium/high)
+- [x] Modos de vista: página / continuo / ajustar ancho / ajustar alto
 
 ### Fase 7 — Exportación & Pulido (Sprint 7)
-- [ ] Parser de rango de páginas: `1,3,5-8`
-- [ ] Endpoint POST /api/pdf/export con rango opcional
-- [ ] Dark mode completo y consistente
-- [ ] CMD+K global → SearchPanel
-- [ ] Atajos de teclado (Delete pages, Ctrl+Z undo, Ctrl+S export)
-- [ ] Estados de carga (skeleton loaders, progress bar)
-- [ ] Manejo de errores con toasts
-- [ ] Al importar el pdf (inicio del proceso) que la aplicacion cree automaticamente el campo titulo desde el title del pdf importado, si no tuviera queda con "Sín título"
-- [ ] Al exportar el pdf, el nombre del fichero por defecto sea el del titulo pero haciendo un slugfy, si no queda con export
-- [ ] añadir a los botones de seleccionar y arrastrar un fondo para resaltarlos en las miniaturas de las paginas
+- [x] Parser de rango de páginas: `1,3,5-8`
+- [x] Endpoint POST /api/pdf/export con rango opcional
+- [x] Dark mode completo y consistente
+- [x] CMD+K global → SearchPanel
+- [x] Atajos de teclado (Delete pages, Ctrl+S export)
+- [x] Estados de carga (progress bar animada)
+- [x] Manejo de errores con toasts
+- [x] Al importar el pdf (inicio del proceso) que la aplicacion cree automaticamente el campo titulo desde el title del pdf importado, si no tuviera queda con "Sín título"
+- [x] Al exportar el pdf, el nombre del fichero por defecto sea el del titulo pero haciendo un slugfy, si no queda con export
+- [x] Añadir a los botones de seleccionar y arrastrar un fondo para resaltarlos en las miniaturas de las paginas
+
+### Fase 8 — Firma
+- [ ] Añadir botón en el menú superior con icono de firma que desplegará un submenú con: Importar imagen, conectar con Autofirma, Dibujar
+- [ ] Importar imagen, abre el explorador de archivos para seleccionar una imagen y la coloca en la pagina actual, y con el boton de Seleccionar podremos moverla con drag and drop y hacer un resize
+- [ ] Conectar con Autofirma, exportará el documento actual y lo enviará a Autofirma y esta aplicacion se abrirá automaticamente con el pdf exportado seleccionado
+- [ ] Dibujar, se colocará un rectangulo en la pagina actual que se podrá seleccionar, recolocar y redimensionar y en su interior por medio de un periférico (ratón, pencil, etc) dibujar a mano alzada una firma
+
+### Fase 9 - Añadir Imagen
+- [ ] En la página de Edición añadir al lado del boton del circulo un boton con icono de imagen para añadir una imagen, aprovechar el componente de imagen de la firma.
 
 ---
 

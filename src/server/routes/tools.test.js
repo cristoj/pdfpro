@@ -75,25 +75,91 @@ describe('POST /api/pdf/search', () => {
   })
 })
 
-describe('Endpoints stub (501)', () => {
-  test('POST /api/pdf/text/add devuelve 501', async () => {
+describe('POST /api/pdf/text/add', () => {
+  test('añade un bloque de texto y lo devuelve con id', async () => {
     const sid = await upload()
-    const res = await req.post('/api/pdf/text/add').send({ sessionId: sid })
-    expect(res.status).toBe(501)
+    const res = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 10, y: 20, text: 'Hola', fontSize: 14, fontFamily: 'Helvetica',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.block.id).toBeTruthy()
+    expect(res.body.block.text).toBe('Hola')
   })
 
-  test('PUT /api/pdf/text/:id devuelve 501', async () => {
-    const res = await req.put('/api/pdf/text/1').send({})
-    expect(res.status).toBe(501)
+  test('devuelve 404 si la sesión no existe', async () => {
+    const res = await req.post('/api/pdf/text/add').send({ sessionId: 'bad', text: 'x' })
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('PUT /api/pdf/text/:id', () => {
+  test('actualiza el texto de un bloque existente', async () => {
+    const sid = await upload()
+    const addRes = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, text: 'original',
+    })
+    const id = addRes.body.block.id
+    const res = await req.put(`/api/pdf/text/${id}`).send({ sessionId: sid, text: 'actualizado' })
+    expect(res.status).toBe(200)
+    expect(res.body.block.text).toBe('actualizado')
   })
 
-  test('DELETE /api/pdf/text/:id devuelve 501', async () => {
-    const res = await req.delete('/api/pdf/text/1')
-    expect(res.status).toBe(501)
+  test('devuelve 404 si el bloque no existe', async () => {
+    const sid = await upload()
+    const res = await req.put('/api/pdf/text/no-existe').send({ sessionId: sid })
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('DELETE /api/pdf/text/:id', () => {
+  test('elimina un bloque de texto existente', async () => {
+    const sid = await upload()
+    const addRes = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, text: 'borrar',
+    })
+    const id = addRes.body.block.id
+    const res = await req.delete(`/api/pdf/text/${id}`).send({ sessionId: sid })
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+  })
+})
+
+describe('POST /api/pdf/form/fill', () => {
+  test('guarda valores de formulario en sesión', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/form/fill').send({
+      sessionId: sid, formValues: { nombre: 'Juan', edad: '30' },
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.formValues.nombre).toBe('Juan')
   })
 
-  test('POST /api/pdf/form/fill devuelve 501', async () => {
+  test('devuelve 400 si faltan parámetros', async () => {
     const res = await req.post('/api/pdf/form/fill').send({})
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(400)
+  })
+})
+
+describe('POST /api/pdf/compress con nivel', () => {
+  test('acepta nivel low', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/compress').send({ sessionId: sid, level: 'low' })
+    expect(res.status).toBe(200)
+    expect(res.body.sizeBytes).toBeGreaterThan(0)
+  })
+
+  test('acepta nivel high', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/compress').send({ sessionId: sid, level: 'high' })
+    expect(res.status).toBe(200)
+    expect(res.body.sizeBytes).toBeGreaterThan(0)
+  })
+
+  test('nivel inválido usa medium sin error', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/compress').send({ sessionId: sid, level: 'super' })
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
   })
 })

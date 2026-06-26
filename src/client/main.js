@@ -154,8 +154,9 @@ async function handleFiles(files, { forceNew = false } = {}) {
       ? await getFormValues(state.sessionId).catch(() => ({}))
       : {}
 
-    // Resetear campos detectados al cargar un nuevo PDF
+    // Resetear campos detectados y el índice de búsqueda al cargar un nuevo PDF
     state.formFields = []
+    textIndex = []
     if (state.formsMode) setFormsMode(false)
 
     showViewer()
@@ -423,7 +424,11 @@ const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.25, 1.5, 2, 3, 4]
 function changeZoom(newZoom) {
   state.zoom = Math.max(0.25, Math.min(4, newZoom))
   zoomLevel.textContent = `${Math.round(state.zoom * 100)}%`
-  renderPage(state.currentPage)
+  if (state.viewMode === 'continuous') {
+    renderContinuousView()
+  } else {
+    renderPage(state.currentPage)
+  }
 }
 
 $('btn-zoom-in').addEventListener('click', () => {
@@ -434,11 +439,79 @@ $('btn-zoom-out').addEventListener('click', () => {
   const prev = [...ZOOM_STEPS].reverse().find(z => z < state.zoom) ?? 0.25
   changeZoom(prev)
 })
-$('btn-fit').addEventListener('click', () => {
+$('btn-fit-width').addEventListener('click', () => {
   if (!state.pdfDoc) return
-  const wrapper = pdfCanvasWrapper
-  changeZoom(wrapper.clientWidth / pdfCanvas.width * state.zoom)
+  const availW = pdfCanvasWrapper.clientWidth - 48  // padding
+  const pdfW = state.pageWidthPt || pdfCanvas.width
+  changeZoom(availW / pdfW)
 })
+
+$('btn-fit-height').addEventListener('click', () => {
+  if (!state.pdfDoc) return
+  const availH = pdfCanvasWrapper.clientHeight - 48
+  const pdfH = state.pageHeightPt || pdfCanvas.height
+  changeZoom(availH / pdfH)
+})
+
+// ── View modes ────────────────────────────────────────────────
+const continuousView = $('continuous-view')
+const canvasContainer = $('canvas-container')
+const btnViewPage = $('btn-view-page')
+const btnViewCont = $('btn-view-cont')
+
+function setViewMode(mode) {
+  state.viewMode = mode
+  btnViewPage.classList.toggle('control-btn--active', mode === 'page')
+  btnViewCont.classList.toggle('control-btn--active', mode === 'continuous')
+
+  if (mode === 'continuous') {
+    canvasContainer.style.display = 'none'
+    continuousView.style.display = 'flex'
+    renderContinuousView()
+  } else {
+    continuousView.style.display = 'none'
+    canvasContainer.style.display = 'inline-block'
+    if (state.pdfDoc) renderPage(state.currentPage)
+  }
+}
+
+async function renderContinuousView() {
+  if (!state.pdfDoc) return
+  continuousView.innerHTML = ''
+  for (let p = 1; p <= state.totalPages; p++) {
+    const page = await state.pdfDoc.getPage(p)
+    const viewport = page.getViewport({ scale: state.zoom })
+
+    const pageWrapper = document.createElement('div')
+    pageWrapper.className = 'continuous-page'
+    pageWrapper.dataset.page = p
+
+    const canvas = document.createElement('canvas')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    canvas.style.display = 'block'
+
+    pageWrapper.appendChild(canvas)
+    continuousView.appendChild(pageWrapper)
+
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+  }
+
+  // Intersección observer para actualizar la página actual al hacer scroll
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        state.currentPage = Number(entry.target.dataset.page)
+        currentPageInput.value = state.currentPage
+      }
+    }
+  }, { root: pdfCanvasWrapper, threshold: 0.5 })
+
+  continuousView.querySelectorAll('.continuous-page').forEach(el => observer.observe(el))
+}
+
+btnViewPage.addEventListener('click', () => { if (state.viewMode !== 'page') setViewMode('page') })
+btnViewCont.addEventListener('click', () => { if (state.viewMode !== 'continuous') setViewMode('continuous') })
 
 // ── Thumbnail size ───────────────────────────────────────────
 $$('.size-btn').forEach(btn => {
@@ -500,21 +573,183 @@ $('btn-confirm-export').addEventListener('click', async () => {
 })
 
 // ── Search ───────────────────────────────────────────────────
-function openSearch() { searchPanel.style.display = 'flex'; searchInput.focus() }
-function closeSearch() { searchPanel.style.display = 'none' }
+// textIndex: Array<{ pageIndex: number, items: Array<{ str, transform }> }>
+let textIndex = []
+let _searchDebounce = null
+
+function openSearch() {
+  searchPanel.style.display = 'flex'
+  searchInput.focus()
+  if (state.pdfDoc && !textIndex.length) buildTextIndex()
+}
+
+function closeSearch() {
+  searchPanel.style.display = 'none'
+  clearSearchHighlights()
+}
+
+async function buildTextIndex() {
+  if (!state.pdfDoc) return
+  textIndex = []
+  for (let p = 1; p <= state.totalPages; p++) {
+    const page = await state.pdfDoc.getPage(p)
+    const content = await page.getTextContent()
+    textIndex.push({ pageIndex: p - 1, items: content.items })
+  }
+}
+
+function searchText(query) {
+  clearSearchHighlights()
+  const resultsEl = $('search-results')
+  resultsEl.innerHTML = ''
+
+  if (!query.trim() || !textIndex.length) return
+
+  const q = query.toLowerCase()
+  const results = []
+
+  for (const { pageIndex, items } of textIndex) {
+    const fullText = items.map(i => i.str).join(' ')
+    if (fullText.toLowerCase().includes(q)) {
+      const snippets = []
+      let joined = ''
+      for (const item of items) {
+        const prev = joined
+        joined += item.str
+        const idx = joined.toLowerCase().indexOf(q)
+        if (idx !== -1) {
+          const start = Math.max(0, idx - 30)
+          const end = Math.min(joined.length, idx + q.length + 30)
+          snippets.push(joined.slice(start, end).trim())
+          joined = joined.slice(idx + q.length)
+        }
+      }
+      results.push({ pageIndex, snippets: snippets.slice(0, 3) })
+    }
+  }
+
+  if (!results.length) {
+    resultsEl.innerHTML = '<p class="search-no-results">Sin resultados</p>'
+    return
+  }
+
+  for (const r of results) {
+    const item = document.createElement('button')
+    item.className = 'search-result-item'
+    const pageNum = r.pageIndex + 1
+    const snippet = r.snippets[0] ?? ''
+    const highlighted = snippet.replace(new RegExp(`(${escapeRe(query)})`, 'gi'), '<mark>$1</mark>')
+    item.innerHTML = `
+      <span class="search-result-page">Pág. ${pageNum}</span>
+      <span class="search-result-snippet">${highlighted}</span>
+    `
+    item.addEventListener('click', () => {
+      navigateTo(pageNum)
+      highlightSearchOnPage(pageNum, query)
+    })
+    resultsEl.appendChild(item)
+  }
+}
+
+function escapeRe(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function highlightSearchOnPage(pageNum, query) {
+  clearSearchHighlights()
+  if (!query.trim()) return
+  const highlights = document.createElement('div')
+  highlights.id = 'search-highlight-layer'
+  highlights.className = 'search-highlight-layer'
+  highlights.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:visible;'
+
+  const entry = textIndex[pageNum - 1]
+  if (!entry) return
+
+  const q = query.toLowerCase()
+  const canvas = pdfCanvas
+  const scaleX = canvas.width / (state.pageWidthPt || canvas.width)
+  const scaleY = canvas.height / (state.pageHeightPt || canvas.height)
+
+  for (const item of entry.items) {
+    if (!item.str.toLowerCase().includes(q)) continue
+    const [a, b, c, d, e, f] = item.transform
+    const x = e * scaleX * state.zoom
+    const y = canvas.height - (f * scaleY * state.zoom) - (Math.abs(d) * scaleY * state.zoom)
+    const w = (item.width ?? item.str.length * Math.abs(a)) * scaleX * state.zoom
+    const h = Math.abs(d) * scaleY * state.zoom || 14
+
+    const mark = document.createElement('div')
+    mark.className = 'search-text-highlight'
+    mark.style.cssText = `left:${x}px;top:${y}px;width:${Math.max(w, 8)}px;height:${Math.max(h, 10)}px;`
+    highlights.appendChild(mark)
+  }
+
+  document.getElementById('canvas-container')?.appendChild(highlights)
+}
+
+function clearSearchHighlights() {
+  document.getElementById('search-highlight-layer')?.remove()
+}
 
 btnSearch.addEventListener('click', openSearch)
 searchPanel.addEventListener('click', e => { if (e.target === searchPanel) closeSearch() })
 searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch() })
+searchInput.addEventListener('input', () => {
+  clearTimeout(_searchDebounce)
+  _searchDebounce = setTimeout(() => searchText(searchInput.value), 300)
+})
 
 // ── Compress ─────────────────────────────────────────────────
-btnCompress.addEventListener('click', async () => {
+const compressPanel = $('compress-panel')
+const compressResult = $('compress-result')
+let _compressLevel = 'low'
+
+function openCompressPanel() {
+  compressResult.style.display = 'none'
+  compressResult.textContent = ''
+  compressPanel.style.display = 'flex'
+}
+
+function closeCompressPanel() {
+  compressPanel.style.display = 'none'
+}
+
+btnCompress.addEventListener('click', () => {
   if (!state.sessionId) return
+  openCompressPanel()
+})
+
+$('btn-close-compress').addEventListener('click', closeCompressPanel)
+$('btn-cancel-compress').addEventListener('click', closeCompressPanel)
+compressPanel.addEventListener('click', e => { if (e.target === compressPanel) closeCompressPanel() })
+
+$$('.compress-level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.compress-level-btn').forEach(b => b.classList.remove('compress-level-btn--active'))
+    btn.classList.add('compress-level-btn--active')
+    _compressLevel = btn.dataset.level
+  })
+})
+
+$('btn-confirm-compress').addEventListener('click', async () => {
+  const confirmBtn = $('btn-confirm-compress')
+  confirmBtn.disabled = true
+  confirmBtn.textContent = 'Comprimiendo…'
+  compressResult.style.display = 'none'
+
   try {
-    const result = await compressPdf(state.sessionId)
-    alert(`PDF comprimido. Nuevo tamaño: ${(result.sizeBytes / 1024).toFixed(1)} KB`)
+    const result = await compressPdf(state.sessionId, _compressLevel)
+    compressResult.textContent = `✓ Comprimido. Nuevo tamaño: ${(result.sizeBytes / 1024).toFixed(1)} KB`
+    compressResult.style.display = 'block'
+    compressResult.style.color = 'var(--color-success)'
   } catch (err) {
-    alert(`Error al comprimir: ${err.message}`)
+    compressResult.textContent = `Error: ${err.message}`
+    compressResult.style.display = 'block'
+    compressResult.style.color = 'var(--color-danger)'
+  } finally {
+    confirmBtn.disabled = false
+    confirmBtn.textContent = 'Comprimir ahora'
   }
 })
 
@@ -1190,7 +1425,7 @@ function deselectTextBlock() {
 async function removeTextBlock(id) {
   state.textBlocks = state.textBlocks.filter(b => b.id !== id)
   if (state.selectedBlockId === id) deselectTextBlock()
-  renderTextOverlay()
+  renderEditOverlay()
   if (state.sessionId) {
     await deleteTextBlock(state.sessionId, id).catch(() => { })
   }

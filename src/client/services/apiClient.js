@@ -60,8 +60,8 @@ export async function exportPdf(sessionId, range) {
   return res.blob()
 }
 
-export async function compressPdf(sessionId) {
-  return request('POST', '/compress', { sessionId })
+export async function compressPdf(sessionId, level = 'medium') {
+  return request('POST', '/compress', { sessionId, level })
 }
 
 export async function getTextBlocks(sessionId) {

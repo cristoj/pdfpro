@@ -33,4 +33,27 @@ describe('compressService', () => {
     const doc = await PDFDocument.load(bytes)
     expect(doc.getPageCount()).toBe(1)
   })
+
+  test('compressPdf con nivel low devuelve tamaño positivo', async () => {
+    const size = await compressPdf(pdfPath, 'low')
+    expect(size).toBeGreaterThan(0)
+  })
+
+  test('compressPdf con nivel medium devuelve tamaño positivo', async () => {
+    const size = await compressPdf(pdfPath, 'medium')
+    expect(size).toBeGreaterThan(0)
+  })
+
+  test('compressPdf con nivel high devuelve tamaño positivo', async () => {
+    const size = await compressPdf(pdfPath, 'high')
+    expect(size).toBeGreaterThan(0)
+  })
+
+  test('compressPdf sin nivel usa medium por defecto sin lanzar error', async () => {
+    await expect(compressPdf(pdfPath)).resolves.toBeGreaterThan(0)
+  })
+
+  test('nivel desconocido usa medium y no lanza error', async () => {
+    await expect(compressPdf(pdfPath, 'ultra')).resolves.toBeGreaterThan(0)
+  })
 })

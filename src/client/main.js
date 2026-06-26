@@ -103,11 +103,15 @@ btnDarkmode.addEventListener('click', () => applyDarkMode(!state.darkMode))
 applyDarkMode(state.darkMode)
 
 // ── File Upload ──────────────────────────────────────────────
-async function handleFiles(files) {
+async function handleFiles(files, { forceNew = false } = {}) {
   if (!files.length) return
   try {
     setLoading(true)
     let data
+    if (forceNew) {
+      state.sessionId = null
+      localStorage.removeItem('pdfpro_session')
+    }
     if (state.sessionId) {
       try {
         data = await addPdf(state.sessionId, files)
@@ -154,7 +158,7 @@ async function handleFiles(files) {
 
 btnUpload.addEventListener('click', () => fileInput.click())
 btnBrowse?.addEventListener('click', () => fileInput.click())
-fileInput.addEventListener('change', e => handleFiles([...e.target.files]))
+fileInput.addEventListener('change', e => handleFiles([...e.target.files], { forceNew: true }))
 
 // ── Drag & Drop on viewer ────────────────────────────────────
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') })
@@ -163,7 +167,7 @@ dropZone.addEventListener('drop', e => {
   e.preventDefault()
   dropZone.classList.remove('drag-over')
   const files = [...e.dataTransfer.files].filter(f => f.type === 'application/pdf')
-  if (files.length) handleFiles(files)
+  if (files.length) handleFiles(files, { forceNew: true })
 })
 
 // ── PDF Rendering (PDF.js) ───────────────────────────────────

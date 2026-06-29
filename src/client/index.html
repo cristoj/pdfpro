@@ -9,12 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="./styles/global.css" />
+    <script>
+      if (window.innerWidth <= 1024 && !localStorage.getItem('pdfpro-mobile-banner-dismissed')) {
+        document.documentElement.classList.add('mobile-banner-active');
+      }
+    </script>
   </head>
   <body class="bg-bg font-sans text-text antialiased">
 
     <!-- TOOLBAR -->
     <header id="toolbar" class="toolbar">
       <div class="toolbar-left">
+        <button id="btn-sidebar-toggle" class="icon-btn btn-sidebar-toggle" title="Mostrar páginas" aria-label="Mostrar panel de páginas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div class="logo">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="4" y="2" width="12" height="16" rx="2" fill="var(--color-accent)" opacity="0.15"/>
@@ -67,6 +75,9 @@
       </div>
 
       <div class="toolbar-right">
+        <button id="btn-mobile-tools" class="icon-btn btn-mobile-tools" title="Herramientas" aria-label="Herramientas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
         <button id="btn-search" class="icon-btn" title="Buscar (⌘K)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </button>
@@ -76,20 +87,30 @@
         </button>
         <button id="btn-upload" class="btn-primary" title="Importar PDF">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Importar PDF
+          <span class="btn-label">Importar PDF</span>
         </button>
         <button id="btn-export" class="btn-accent" title="Exportar PDF">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar
+          <span class="btn-label">Exportar</span>
         </button>
       </div>
     </header>
+
+    <!-- MOBILE BANNER -->
+    <div id="mobile-banner" class="mobile-banner" role="alert" aria-live="polite">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="mobile-banner-text">Esta aplicación está diseñada para escritorio. La experiencia en dispositivos móviles puede ser limitada.</span>
+      <button id="mobile-banner-close" class="mobile-banner-close" aria-label="Cerrar aviso">✕</button>
+    </div>
 
     <!-- LOADING BAR -->
     <div id="loading-bar" class="loading-bar"></div>
 
     <!-- MAIN LAYOUT -->
     <div class="app-layout">
+
+      <!-- SIDEBAR BACKDROP (mobile) -->
+      <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 
       <!-- SIDEBAR -->
       <aside id="sidebar" class="sidebar">
@@ -306,6 +327,45 @@
       </div>
     </div>
 
+    <!-- MOBILE TOOLS SHEET -->
+    <div id="mobile-tools-sheet" class="mobile-tools-sheet" style="display:none" role="dialog" aria-modal="true" aria-label="Herramientas">
+      <div class="mobile-tools-backdrop"></div>
+      <div class="mobile-tools-content">
+        <div class="mobile-tools-handle" aria-hidden="true"></div>
+        <div class="mobile-tools-header">
+          <span class="mobile-tools-title">Herramientas</span>
+          <button class="icon-btn" id="mobile-tools-close" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="mobile-tools-list">
+          <button class="mobile-tool-item" data-target="btn-compress">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10M12 22v-10M4.93 4.93l7.07 7.07M19.07 4.93l-7.07 7.07M2 12h10M22 12h-10M4.93 19.07l7.07-7.07M19.07 19.07l-7.07-7.07"/></svg>
+            <span>Comprimir PDF</span>
+          </button>
+          <button class="mobile-tool-item" data-target="btn-edit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Editar</span>
+          </button>
+          <button class="mobile-tool-item" data-target="btn-forms">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>
+            <span>Rellenar formularios</span>
+          </button>
+          <div class="mobile-tool-group-label">Firma</div>
+          <button class="mobile-tool-item" data-target="sig-import-image">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Importar imagen de firma</span>
+          </button>
+          <button class="mobile-tool-item" data-target="sig-autofirma">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span>Autofirma</span>
+          </button>
+          <button class="mobile-tool-item" data-target="sig-draw">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            <span>Dibujar firma</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- SIGNATURE DRAW MODAL -->
     <div id="signature-draw-modal" class="signature-draw-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Dibujar firma">
       <div class="signature-draw-content">
@@ -379,6 +439,74 @@
     </div>
 
     <script src="/autoscript.js"></script>
+    <script>
+      (function () {
+        var html = document.documentElement;
+
+        // Mobile banner dismiss
+        var banner = document.getElementById('mobile-banner');
+        var bannerClose = document.getElementById('mobile-banner-close');
+        if (bannerClose) {
+          bannerClose.addEventListener('click', function () {
+            banner.style.display = 'none';
+            html.classList.remove('mobile-banner-active');
+            localStorage.setItem('pdfpro-mobile-banner-dismissed', '1');
+          });
+        }
+
+        // Sidebar toggle (mobile)
+        var sidebar = document.getElementById('sidebar');
+        var backdrop = document.getElementById('sidebar-backdrop');
+        var toggleBtn = document.getElementById('btn-sidebar-toggle');
+
+        function openSidebar() {
+          sidebar.classList.add('sidebar--open');
+          html.classList.add('sidebar-open');
+        }
+        function closeSidebar() {
+          sidebar.classList.remove('sidebar--open');
+          html.classList.remove('sidebar-open');
+        }
+
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', function () {
+            sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
+          });
+        }
+        if (backdrop) {
+          backdrop.addEventListener('click', closeSidebar);
+        }
+
+        // Mobile tools bottom sheet
+        var toolsSheet = document.getElementById('mobile-tools-sheet');
+        var toolsClose = document.getElementById('mobile-tools-close');
+        var toolsBtn = document.getElementById('btn-mobile-tools');
+        var toolsBackdrop = toolsSheet ? toolsSheet.querySelector('.mobile-tools-backdrop') : null;
+
+        function openToolsSheet() {
+          toolsSheet.style.display = 'flex';
+          document.documentElement.classList.add('tools-sheet-open');
+        }
+        function closeToolsSheet() {
+          toolsSheet.style.display = 'none';
+          document.documentElement.classList.remove('tools-sheet-open');
+        }
+
+        if (toolsBtn) toolsBtn.addEventListener('click', openToolsSheet);
+        if (toolsClose) toolsClose.addEventListener('click', closeToolsSheet);
+        if (toolsBackdrop) toolsBackdrop.addEventListener('click', closeToolsSheet);
+
+        if (toolsSheet) {
+          toolsSheet.querySelectorAll('[data-target]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              closeToolsSheet();
+              var target = document.getElementById(btn.dataset.target);
+              if (target) target.click();
+            });
+          });
+        }
+      })();
+    </script>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

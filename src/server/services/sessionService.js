@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
+import fs from 'node:fs/promises'
 
 const TTL_MS = Number(process.env.SESSION_TTL_MS ?? 3_600_000)
 
@@ -9,6 +10,7 @@ function purgeExpired() {
   for (const [id, session] of sessions) {
     if (now - session.createdAt > TTL_MS) {
       sessions.delete(id)
+      if (session.filePath) fs.unlink(session.filePath).catch(() => {})
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -10,6 +11,22 @@ import signRoutes from './routes/sign.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT ?? 3000
+const UPLOADS_DIR = path.join(__dirname, '../../uploads')
+const CLEANUP_MAX_AGE_MS = Number(process.env.UPLOAD_MAX_AGE_MS ?? 86_400_000)
+
+async function cleanUploadsDir() {
+  const files = await fs.readdir(UPLOADS_DIR).catch(() => [])
+  const now = Date.now()
+  await Promise.all(
+    files.map(async (file) => {
+      const filePath = path.join(UPLOADS_DIR, file)
+      const stat = await fs.stat(filePath).catch(() => null)
+      if (stat && now - stat.mtimeMs > CLEANUP_MAX_AGE_MS) {
+        await fs.unlink(filePath).catch(() => {})
+      }
+    })
+  )
+}
 
 const app = express()
 
@@ -43,6 +60,7 @@ app.use('/api/pdf', toolsRoutes)
 app.use(errorHandler)
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  cleanUploadsDir()
   app.listen(PORT, () => {
     console.log(`PDFPro server running on http://localhost:${PORT}`)
   })

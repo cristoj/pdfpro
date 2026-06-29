@@ -277,7 +277,7 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  background: #1e293b;
+  background: var(--color-surface);
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   z-index: 30;
@@ -1104,14 +1104,53 @@ html, body {
   display: block;
 }
 
-.shape-handle[data-handle="tl"] { top: -4px; left: -4px; cursor: nw-resize; }
-.shape-handle[data-handle="tc"] { top: -4px; left: calc(50% - 4px); cursor: n-resize; }
-.shape-handle[data-handle="tr"] { top: -4px; right: -4px; cursor: ne-resize; }
-.shape-handle[data-handle="ml"] { top: calc(50% - 4px); left: -4px; cursor: w-resize; }
-.shape-handle[data-handle="mr"] { top: calc(50% - 4px); right: -4px; cursor: e-resize; }
-.shape-handle[data-handle="bl"] { bottom: -4px; left: -4px; cursor: sw-resize; }
-.shape-handle[data-handle="bc"] { bottom: -4px; left: calc(50% - 4px); cursor: s-resize; }
-.shape-handle[data-handle="br"] { bottom: -4px; right: -4px; cursor: se-resize; }
+.shape-handle[data-handle="tl"] {
+  top: -4px;
+  left: -4px;
+  cursor: nw-resize;
+}
+
+.shape-handle[data-handle="tc"] {
+  top: -4px;
+  left: calc(50% - 4px);
+  cursor: n-resize;
+}
+
+.shape-handle[data-handle="tr"] {
+  top: -4px;
+  right: -4px;
+  cursor: ne-resize;
+}
+
+.shape-handle[data-handle="ml"] {
+  top: calc(50% - 4px);
+  left: -4px;
+  cursor: w-resize;
+}
+
+.shape-handle[data-handle="mr"] {
+  top: calc(50% - 4px);
+  right: -4px;
+  cursor: e-resize;
+}
+
+.shape-handle[data-handle="bl"] {
+  bottom: -4px;
+  left: -4px;
+  cursor: sw-resize;
+}
+
+.shape-handle[data-handle="bc"] {
+  bottom: -4px;
+  left: calc(50% - 4px);
+  cursor: s-resize;
+}
+
+.shape-handle[data-handle="br"] {
+  bottom: -4px;
+  right: -4px;
+  cursor: se-resize;
+}
 
 /* ── Image blocks ─────────────────────────────────────── */
 .image-block {
@@ -1192,7 +1231,7 @@ html, body {
   box-sizing: border-box;
   min-width: 0;
   transition: border-color var(--duration-fast) var(--ease-out),
-              background var(--duration-fast) var(--ease-out);
+    background var(--duration-fast) var(--ease-out);
 }
 
 .form-field-input:focus {
@@ -1393,9 +1432,20 @@ html, body {
 }
 
 @keyframes loading-slide {
-  0%   { left: -45%; width: 35%; }
-  60%  { left: 30%;  width: 55%; }
-  100% { left: 105%; width: 35%; }
+  0% {
+    left: -45%;
+    width: 35%;
+  }
+  
+  60% {
+    left: 30%;
+    width: 55%;
+  }
+  
+  100% {
+    left: 105%;
+    width: 35%;
+  }
 }
 
 /* ── Toast notifications ──────────────────────────────── */
@@ -1447,9 +1497,17 @@ html, body {
   line-height: 1;
 }
 
-.toast--error .toast-icon   { color: var(--color-danger); }
-.toast--success .toast-icon { color: var(--color-success); }
-.toast--info .toast-icon    { color: var(--color-accent); }
+.toast--error .toast-icon {
+  color: var(--color-danger);
+}
+
+.toast--success .toast-icon {
+  color: var(--color-success);
+}
+
+.toast--info .toast-icon {
+  color: var(--color-accent);
+}
 
 .toast-message {
   flex: 1;
@@ -1474,12 +1532,22 @@ html, body {
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes toast-out {
-  to { opacity: 0; transform: translateY(6px); }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 /* ── Thumbnail handle & checkbox backgrounds ──────────── */
@@ -1520,7 +1588,7 @@ html, body {
 }
 
 .page-thumb:hover .page-thumb-checkbox-wrap,
-.page-thumb.selected .page-thumb-checkbox-wrap {
+  .page-thumb.selected .page-thumb-checkbox-wrap {
   opacity: 1;
 }
 
@@ -1657,7 +1725,9 @@ html, body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .autofirma-icon {

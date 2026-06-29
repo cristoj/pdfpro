@@ -2,6 +2,10 @@ import { Router } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { getSession, updateSession } from '../services/sessionService.js'
 import { compressPdf } from '../services/compressService.js'
+import { sanitizeColor } from '../utils/validation.js'
+
+// FINDING-08: cap on stored images per session to prevent memory DoS
+const MAX_IMAGES_PER_SESSION = 50
 
 const router = Router()
 
@@ -62,7 +66,8 @@ router.post('/text/add', async (req, res, next) => {
       fontFamily: fontFamily || 'Helvetica',
       bold: Boolean(bold),
       italic: Boolean(italic),
-      color: color || '#000000',
+      // FINDING-10: sanitize hex color to prevent NaN in pdf-lib rgb()
+      color: sanitizeColor(color, '#000000'),
     }
 
     updateSession(sessionId, { textBlocks: [...(session.textBlocks ?? []), block] })
@@ -88,7 +93,8 @@ router.put('/text/:id', async (req, res, next) => {
     if (fontFamily !== undefined) patch.fontFamily = fontFamily
     if (bold !== undefined) patch.bold = Boolean(bold)
     if (italic !== undefined) patch.italic = Boolean(italic)
-    if (color !== undefined) patch.color = color
+    // FINDING-10: sanitize hex color on update too
+    if (color !== undefined) patch.color = sanitizeColor(color, blocks[idx].color ?? '#000000')
     if (x !== undefined) patch.x = Number(x)
     if (y !== undefined) patch.y = Number(y)
 
@@ -142,9 +148,10 @@ router.post('/shapes/add', async (req, res, next) => {
       y: Number(y) || 0,
       width: Number(width) || 100,
       height: Number(height) || 100,
-      fillColor: fillColor || '#ffffff',
+      // FINDING-10: sanitize hex colors for shapes
+      fillColor: sanitizeColor(fillColor, '#ffffff'),
       fillTransparent: Boolean(fillTransparent),
-      strokeColor: strokeColor || '#000000',
+      strokeColor: sanitizeColor(strokeColor, '#000000'),
       strokeWidth: Number(strokeWidth) || 2,
     }
 
@@ -170,9 +177,10 @@ router.put('/shapes/:id', async (req, res, next) => {
     if (y !== undefined) patch.y = Number(y)
     if (width !== undefined) patch.width = Number(width)
     if (height !== undefined) patch.height = Number(height)
-    if (fillColor !== undefined) patch.fillColor = fillColor
+    // FINDING-10: sanitize hex colors on update
+    if (fillColor !== undefined) patch.fillColor = sanitizeColor(fillColor, shapes[idx].fillColor ?? '#ffffff')
     if (fillTransparent !== undefined) patch.fillTransparent = Boolean(fillTransparent)
-    if (strokeColor !== undefined) patch.strokeColor = strokeColor
+    if (strokeColor !== undefined) patch.strokeColor = sanitizeColor(strokeColor, shapes[idx].strokeColor ?? '#000000')
     if (strokeWidth !== undefined) patch.strokeWidth = Number(strokeWidth)
 
     const updated = [...shapes]
@@ -217,6 +225,11 @@ router.post('/images/add', async (req, res, next) => {
     const session = getSession(sessionId)
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
     if (!imageData) return res.status(400).json({ success: false, error: 'imageData required' })
+
+    // FINDING-08: enforce per-session image cap to prevent memory DoS
+    if ((session.images ?? []).length >= MAX_IMAGES_PER_SESSION) {
+      return res.status(422).json({ success: false, error: `Maximum ${MAX_IMAGES_PER_SESSION} images per session` })
+    }
 
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
     const safeMime = validTypes.includes(mimeType) ? mimeType : 'image/png'

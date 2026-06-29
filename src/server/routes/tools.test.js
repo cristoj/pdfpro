@@ -141,6 +141,92 @@ describe('POST /api/pdf/form/fill', () => {
   })
 })
 
+// FINDING-08: image cap per session
+describe('POST /api/pdf/images/add — límite de imágenes (FINDING-08)', () => {
+  test('acepta hasta 50 imágenes por sesión', async () => {
+    const sid = await upload()
+    // Add 49 images (well below the cap)
+    for (let i = 0; i < 49; i++) {
+      const res = await req.post('/api/pdf/images/add').send({
+        sessionId: sid, pageIndex: 0, x: 0, y: 0, width: 10, height: 10,
+        imageData: 'data:image/png;base64,iVBORw0KGgo=', mimeType: 'image/png',
+      })
+      expect(res.status).toBe(200)
+    }
+  })
+
+  test('rechaza la imagen 51 con 422', async () => {
+    const sid = await upload()
+    const payload = {
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, width: 10, height: 10,
+      imageData: 'data:image/png;base64,iVBORw0KGgo=', mimeType: 'image/png',
+    }
+    // Fill to the cap
+    for (let i = 0; i < 50; i++) {
+      await req.post('/api/pdf/images/add').send(payload)
+    }
+    // The 51st should be rejected
+    const res = await req.post('/api/pdf/images/add').send(payload)
+    expect(res.status).toBe(422)
+    expect(res.body.success).toBe(false)
+    expect(res.body.error).toMatch(/Maximum/)
+  })
+})
+
+// FINDING-10: hex color sanitization
+describe('POST /api/pdf/text/add — sanitización de colores (FINDING-10)', () => {
+  test('acepta un color hex válido', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, text: 'ok', color: '#1a2b3c',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.block.color).toBe('#1a2b3c')
+  })
+
+  test('convierte un color inválido al fallback #000000', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, text: 'bad color',
+      color: '<script>alert(1)</script>',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.block.color).toBe('#000000')
+  })
+
+  test('convierte un color sin formato hex al fallback #000000', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/text/add').send({
+      sessionId: sid, pageIndex: 0, x: 0, y: 0, text: 'bad', color: 'ZZZ',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.block.color).toBe('#000000')
+  })
+})
+
+describe('POST /api/pdf/shapes/add — sanitización de colores (FINDING-10)', () => {
+  test('acepta colores válidos en forma', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/shapes/add').send({
+      sessionId: sid, type: 'rect', pageIndex: 0, x: 0, y: 0, width: 50, height: 50,
+      fillColor: '#ff0000', strokeColor: '#0000ff',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.shape.fillColor).toBe('#ff0000')
+    expect(res.body.shape.strokeColor).toBe('#0000ff')
+  })
+
+  test('convierte fillColor inválido al fallback #ffffff', async () => {
+    const sid = await upload()
+    const res = await req.post('/api/pdf/shapes/add').send({
+      sessionId: sid, type: 'rect', pageIndex: 0, x: 0, y: 0, width: 50, height: 50,
+      fillColor: 'INVALID', strokeColor: '#000000',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.shape.fillColor).toBe('#ffffff')
+  })
+})
+
 describe('POST /api/pdf/compress con nivel', () => {
   test('acepta nivel low', async () => {
     const sid = await upload()

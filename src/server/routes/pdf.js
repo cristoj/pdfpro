@@ -4,14 +4,45 @@ import { upload } from '../middleware/upload.js'
 import { createSession, getSession, updateSession } from '../services/sessionService.js'
 import { loadPdf, savePdf, buildPageList, mergePdfs, extractPages, applyTextBlocks, applyShapes, applyFormValues, applyImages } from '../services/pdfService.js'
 import { parseRange } from '../../shared/pageRange.js'
+import { hasPdfMagicBytes } from '../utils/validation.js'
 
 const router = Router()
+
+/**
+ * Verify every file in the array starts with the PDF magic header (%PDF).
+ * If any check fails, all files are removed and a 415 response is sent.
+ * Returns false when the request has already been answered.
+ * @param {import('express').Response} res
+ * @param {import('multer').File[]} files
+ * @returns {Promise<boolean>}
+ */
+async function verifyPdfFiles(res, files) {
+  for (const file of files) {
+    const buf = Buffer.alloc(4)
+    let fd
+    try {
+      fd = await fs.open(file.path, 'r')
+      await fd.read(buf, 0, 4, 0)
+    } finally {
+      await fd?.close().catch(() => {})
+    }
+    if (!hasPdfMagicBytes(buf)) {
+      await Promise.all(files.map((f) => fs.unlink(f.path).catch(() => {})))
+      res.status(415).json({ success: false, error: 'File is not a valid PDF' })
+      return false
+    }
+  }
+  return true
+}
 
 router.post('/upload', upload.array('files'), async (req, res, next) => {
   try {
     if (!req.files?.length) {
       return res.status(400).json({ success: false, error: 'No files uploaded' })
     }
+
+    // FINDING-02: verify actual PDF magic bytes, not just browser-declared MIME type
+    if (!await verifyPdfFiles(res, req.files)) return
 
     const [first, ...rest] = req.files
     let doc = await loadPdf(first.path)
@@ -38,6 +69,9 @@ router.post('/add', upload.array('files'), async (req, res, next) => {
     const session = getSession(sessionId)
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
     if (!req.files?.length) return res.status(400).json({ success: false, error: 'No files uploaded' })
+
+    // FINDING-02: verify actual PDF magic bytes for added files too
+    if (!await verifyPdfFiles(res, req.files)) return
 
     let doc = await loadPdf(session.filePath)
     for (const f of req.files) {

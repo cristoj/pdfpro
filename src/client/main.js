@@ -1,6 +1,7 @@
 import Sortable from 'sortablejs'
 import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage, exportPdfForSigning, importSignedPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
+import { createToastElement, createHighlightedSnippet } from './utils/domUtils.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // ── App State ────────────────────────────────────────────────
@@ -112,20 +113,14 @@ function slugify(str) {
 }
 
 function showToast(message, type = 'info') {
+  // FINDING-05: use safe DOM construction — never innerHTML with user/server content
   const container = $('toast-container')
-  const toast = document.createElement('div')
-  toast.className = `toast toast--${type}`
-  const icon = type === 'error' ? '✕' : type === 'success' ? '✓' : 'ℹ'
-  toast.innerHTML = `
-    <span class="toast-icon">${icon}</span>
-    <span class="toast-message">${message}</span>
-    <button class="toast-close" aria-label="Cerrar">✕</button>
-  `
+  const { toast, closeBtn } = createToastElement(message, type)
   const dismiss = () => {
     toast.classList.add('toast--out')
     setTimeout(() => toast.remove(), 250)
   }
-  toast.querySelector('.toast-close').addEventListener('click', dismiss)
+  closeBtn.addEventListener('click', dismiss)
   container.appendChild(toast)
   setTimeout(dismiss, 4500)
 }
@@ -699,7 +694,10 @@ function searchText(query) {
   }
 
   if (!results.length) {
-    resultsEl.innerHTML = '<p class="search-no-results">Sin resultados</p>'
+    const noResults = document.createElement('p')
+    noResults.className = 'search-no-results'
+    noResults.textContent = 'Sin resultados'
+    resultsEl.appendChild(noResults)
     return
   }
 
@@ -708,11 +706,15 @@ function searchText(query) {
     item.className = 'search-result-item'
     const pageNum = r.pageIndex + 1
     const snippet = r.snippets[0] ?? ''
-    const highlighted = snippet.replace(new RegExp(`(${escapeRe(query)})`, 'gi'), '<mark>$1</mark>')
-    item.innerHTML = `
-      <span class="search-result-page">Pág. ${pageNum}</span>
-      <span class="search-result-snippet">${highlighted}</span>
-    `
+
+    // FINDING-01: use safe DOM builder — never innerHTML with PDF text content
+    const pageEl = document.createElement('span')
+    pageEl.className = 'search-result-page'
+    pageEl.textContent = `Pág. ${pageNum}`
+
+    item.appendChild(pageEl)
+    item.appendChild(createHighlightedSnippet(snippet, query))
+
     item.addEventListener('click', () => {
       navigateTo(pageNum)
       highlightSearchOnPage(pageNum, query)

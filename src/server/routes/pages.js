@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getSession, updateSession } from '../services/sessionService.js'
 import { loadPdf, savePdf, buildPageList, reorderPages, deletePages } from '../services/pdfService.js'
+import { areValidPageIndices } from '../utils/validation.js'
 
 const router = Router()
 
@@ -70,14 +71,17 @@ router.delete('/pages', async (req, res, next) => {
     const doc = await loadPdf(session.filePath)
     const total = doc.getPageCount()
 
-    if (!Array.isArray(pages) || pages.length === 0) {
-      return res.status(422).json({ success: false, error: 'No pages specified' })
+    // FINDING-07: validate each element is a non-negative integer within range
+    if (!areValidPageIndices(pages, total)) {
+      return res.status(422).json({ success: false, error: 'Invalid page indices' })
     }
-    if (pages.length >= total) {
+    // De-duplicate before checking the "all pages" guard
+    const unique = [...new Set(pages)]
+    if (unique.length >= total) {
       return res.status(422).json({ success: false, error: 'Cannot delete all pages' })
     }
 
-    const updated = await deletePages(doc, pages)
+    const updated = await deletePages(doc, unique)
     await savePdf(updated, session.filePath)
     const updatedPages = buildPageList(updated)
     updateSession(sessionId, { pages: updatedPages })

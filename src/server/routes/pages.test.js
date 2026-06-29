@@ -131,4 +131,41 @@ describe('DELETE /api/pdf/pages', () => {
     const res = await req.delete('/api/pdf/pages').send({ sessionId: 'bad', pages: [0] })
     expect(res.status).toBe(404)
   })
+
+  // FINDING-07: integer / range validation
+  test('FINDING-07: rechaza índices float', async () => {
+    const sid = await upload()
+    const res = await req.delete('/api/pdf/pages').send({ sessionId: sid, pages: [1.5] })
+    expect(res.status).toBe(422)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('FINDING-07: rechaza índices negativos', async () => {
+    const sid = await upload()
+    const res = await req.delete('/api/pdf/pages').send({ sessionId: sid, pages: [-1] })
+    expect(res.status).toBe(422)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('FINDING-07: rechaza índices fuera del rango del documento', async () => {
+    const sid = await upload()
+    const res = await req.delete('/api/pdf/pages').send({ sessionId: sid, pages: [99] })
+    expect(res.status).toBe(422)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('FINDING-07: rechaza índices de tipo string', async () => {
+    const sid = await upload()
+    const res = await req.delete('/api/pdf/pages').send({ sessionId: sid, pages: ['0'] })
+    expect(res.status).toBe(422)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('FINDING-07: deduplica índices repetidos antes de borrar', async () => {
+    // Sending [0, 0] should be treated as [0] (one page deleted, not error)
+    const sid = await upload()
+    const res = await req.delete('/api/pdf/pages').send({ sessionId: sid, pages: [0, 0] })
+    expect(res.status).toBe(200)
+    expect(res.body.pages).toHaveLength(2)
+  })
 })

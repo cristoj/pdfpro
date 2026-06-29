@@ -5,7 +5,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // ── App State ────────────────────────────────────────────────
 const state = {
-  sessionId: localStorage.getItem('pdfpro_session') ?? null,
+  sessionId: sessionStorage.getItem('pdfpro_session') ?? null,
   pages: [],
   currentPage: 1,
   totalPages: 0,
@@ -149,7 +149,7 @@ async function handleFiles(files, { forceNew = false } = {}) {
     let data
     if (forceNew) {
       state.sessionId = null
-      localStorage.removeItem('pdfpro_session')
+      sessionStorage.removeItem('pdfpro_session')
     }
     if (state.sessionId) {
       try {
@@ -157,7 +157,7 @@ async function handleFiles(files, { forceNew = false } = {}) {
       } catch (err) {
         if (err.message.includes('Session not found')) {
           state.sessionId = null
-          localStorage.removeItem('pdfpro_session')
+          sessionStorage.removeItem('pdfpro_session')
           data = await uploadPdf(files)
         } else {
           throw err
@@ -169,7 +169,7 @@ async function handleFiles(files, { forceNew = false } = {}) {
 
     if (data.sessionId) {
       state.sessionId = data.sessionId
-      localStorage.setItem('pdfpro_session', data.sessionId)
+      sessionStorage.setItem('pdfpro_session', data.sessionId)
     }
 
     state.pages = data.pages

@@ -807,9 +807,16 @@ $('btn-confirm-compress').addEventListener('click', async () => {
 
   try {
     const result = await compressPdf(state.sessionId, _compressLevel)
-    compressResult.textContent = `✓ Comprimido. Nuevo tamaño: ${(result.sizeBytes / 1024).toFixed(1)} KB`
+    const reduced = result.sizeBytes < result.originalBytes
+    if (reduced) {
+      const saving = Math.round((1 - result.sizeBytes / result.originalBytes) * 100)
+      compressResult.textContent = `✓ Comprimido: ${(result.originalBytes / 1024).toFixed(1)} KB → ${(result.sizeBytes / 1024).toFixed(1)} KB (−${saving}%)`
+      compressResult.style.color = 'var(--color-success)'
+    } else {
+      compressResult.textContent = `ℹ El PDF ya está optimizado (sin cambios)`
+      compressResult.style.color = 'var(--color-text-muted, var(--color-text))'
+    }
     compressResult.style.display = 'block'
-    compressResult.style.color = 'var(--color-success)'
   } catch (err) {
     compressResult.textContent = `Error: ${err.message}`
     compressResult.style.display = 'block'

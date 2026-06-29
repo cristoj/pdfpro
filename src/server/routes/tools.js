@@ -13,8 +13,8 @@ router.post('/compress', async (req, res, next) => {
 
     const validLevels = ['low', 'medium', 'high']
     const safeLevel = validLevels.includes(level) ? level : 'medium'
-    const newSize = await compressPdf(session.filePath, safeLevel)
-    res.json({ success: true, sizeBytes: newSize })
+    const { newSize, originalSize } = await compressPdf(session.filePath, safeLevel)
+    res.json({ success: true, sizeBytes: newSize, originalBytes: originalSize })
   } catch (err) {
     next(err)
   }

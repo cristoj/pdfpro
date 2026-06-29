@@ -21,10 +21,17 @@ afterAll(async () => {
 })
 
 describe('compressService', () => {
-  test('compressPdf devuelve el tamaño en bytes como número positivo', async () => {
-    const size = await compressPdf(pdfPath)
-    expect(typeof size).toBe('number')
-    expect(size).toBeGreaterThan(0)
+  test('compressPdf devuelve { newSize, originalSize } con valores positivos', async () => {
+    const result = await compressPdf(pdfPath)
+    expect(result).toHaveProperty('newSize')
+    expect(result).toHaveProperty('originalSize')
+    expect(result.newSize).toBeGreaterThan(0)
+    expect(result.originalSize).toBeGreaterThan(0)
+  })
+
+  test('newSize nunca supera originalSize', async () => {
+    const { newSize, originalSize } = await compressPdf(pdfPath)
+    expect(newSize).toBeLessThanOrEqual(originalSize)
   })
 
   test('compressPdf mantiene el archivo legible tras la compresión', async () => {
@@ -34,26 +41,31 @@ describe('compressService', () => {
     expect(doc.getPageCount()).toBe(1)
   })
 
-  test('compressPdf con nivel low devuelve tamaño positivo', async () => {
-    const size = await compressPdf(pdfPath, 'low')
-    expect(size).toBeGreaterThan(0)
+  test('nivel low devuelve newSize y originalSize positivos', async () => {
+    const { newSize, originalSize } = await compressPdf(pdfPath, 'low')
+    expect(newSize).toBeGreaterThan(0)
+    expect(originalSize).toBeGreaterThan(0)
   })
 
-  test('compressPdf con nivel medium devuelve tamaño positivo', async () => {
-    const size = await compressPdf(pdfPath, 'medium')
-    expect(size).toBeGreaterThan(0)
+  test('nivel medium devuelve newSize y originalSize positivos', async () => {
+    const { newSize, originalSize } = await compressPdf(pdfPath, 'medium')
+    expect(newSize).toBeGreaterThan(0)
+    expect(originalSize).toBeGreaterThan(0)
   })
 
-  test('compressPdf con nivel high devuelve tamaño positivo', async () => {
-    const size = await compressPdf(pdfPath, 'high')
-    expect(size).toBeGreaterThan(0)
+  test('nivel high devuelve newSize y originalSize positivos', async () => {
+    const { newSize, originalSize } = await compressPdf(pdfPath, 'high')
+    expect(newSize).toBeGreaterThan(0)
+    expect(originalSize).toBeGreaterThan(0)
   })
 
-  test('compressPdf sin nivel usa medium por defecto sin lanzar error', async () => {
-    await expect(compressPdf(pdfPath)).resolves.toBeGreaterThan(0)
+  test('sin nivel usa medium por defecto sin lanzar error', async () => {
+    const result = await compressPdf(pdfPath)
+    expect(result.newSize).toBeGreaterThan(0)
   })
 
   test('nivel desconocido usa medium y no lanza error', async () => {
-    await expect(compressPdf(pdfPath, 'ultra')).resolves.toBeGreaterThan(0)
+    const result = await compressPdf(pdfPath, 'ultra')
+    expect(result.newSize).toBeGreaterThan(0)
   })
 })

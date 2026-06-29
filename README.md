@@ -136,6 +136,10 @@ POST   /api/pdf/export              # { sessionId, range?: "1,3-5" } → PDF
 - **Miniaturas** — sidebar con previews en 3 tamaños, drag & drop para reordenar
 - **Gestión de páginas** — reordenar, eliminar, añadir más PDFs (merge)
 - **Exportar** — rango de páginas configurable (`1,3,5-8`)
-- **Comprimir** — reduce el tamaño del PDF
+- **Comprimir** — Ghostscript + fallback Node.js+sharp (soporta FlateDecode→JPEG); reduce hasta 90% en imágenes
+- **Edición de texto** — anotaciones con pdf-lib, tipografía configurable
+- **Firma** — importar imagen, Autofirma (integración), o dibujar a mano sobre PDF
+- **Formularios** — detectar y rellenar campos AcroForm
 - **Búsqueda** — CMD+K abre panel de búsqueda de texto
 - **Dark mode** — toggle con persistencia en localStorage
+- **Responsive mobile** — banner de aviso de diseño escritorio, sidebar overlay (≤768px), bottom sheet de herramientas

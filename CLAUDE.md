@@ -137,20 +137,24 @@ Tests existentes:
 | Fase | Estado | Descripción |
 |---|---|---|
 | 1 — Infraestructura | ✅ Completa | Express 5, Vite 6, Tailwind v4, layout shell, tests base |
-| 2 — Upload & Visor | ⏳ Pendiente | PDF.js integrado, miniaturas reales, navegación |
-| 3 — Gestión páginas | ⏳ Pendiente | Drag & drop SortableJS, multi-selección, merge |
-| 4 — Edición texto | ⏳ Pendiente | Canvas overlay, pdf-lib drawText, tipografía |
-| 5 — Formularios | ⏳ Pendiente | AcroForm detect, inputs HTML overlay |
-| 6 — Herramientas | ⏳ Pendiente | Búsqueda texto, compresión, vistas |
-| 7 — Exportación | ⏳ Pendiente | Parser rango, atajos teclado, toasts |
+| 2 — Upload & Visor | ✅ Completa | PDF.js integrado, miniaturas reales, navegación |
+| 3 — Gestión páginas | ✅ Completa | Drag & drop SortableJS, multi-selección, merge |
+| 4 — Edición texto | ✅ Completa | Canvas overlay, pdf-lib drawText, tipografía |
+| 5 — Formularios | ✅ Completa | AcroForm detect, inputs HTML overlay |
+| 6 — Herramientas | ✅ Completa | Búsqueda texto, compresión (gs + sharp), vistas |
+| 7 — Exportación | ✅ Completa | Parser rango, atajos teclado, toasts |
+| 8 — Firma | ✅ Completa | Importar imagen, Autofirma, dibujar sobre PDF |
+| 9 — Responsive Mobile | ✅ Completa | Banner de aviso, sidebar overlay, bottom sheet |
 
 ## Decisiones técnicas
 
-- **Sesiones en memoria** (no Redis) — sin infraestructura extra, TTL 1h
+- **Sesiones en memoria** (no Redis) — sin infraestructura extra, TTL 1h; con recuperación automática en Vercel si la instancia cambia
 - **Previews de miniaturas en cliente** — PDF.js canvas, no endpoint de imagen PNG
 - **Búsqueda en cliente** — PDF.js `getTextContent()`, no indexado en servidor
-- **Compresión con pdf-lib** — `useObjectStreams: true`, sin ghostscript
+- **Compresión dual** — Ghostscript para máximo ahorro + fallback Node.js+sharp (FlateDecode→JPEG) en Vercel
 - **PDF.js worker** — servido desde `public/pdf.worker.min.js`
+- **Responsive mobile** — Banner de aviso (≤1024px), sidebar overlay (≤768px), bottom sheet de herramientas
+- **Limpieza automática** — Purga de uploads al expirar sesión (TTL 1h) + cleanup de archivos huérfanos (>24h) al arrancar
 
 ## Troubleshooting frecuente
 

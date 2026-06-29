@@ -2068,7 +2068,7 @@ sigAutofirma.addEventListener('click', async () => {
   // eslint-disable-next-line no-undef
   AutoScript.sign(
     pdfBase64,
-    'SHA256',
+    'SHA256withRSA',
     'PAdES',
     '',
     (signatureB64) => {

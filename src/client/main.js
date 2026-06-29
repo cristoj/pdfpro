@@ -2006,8 +2006,6 @@ const autofirmaPanel = $('autofirma-panel')
 const btnCloseAutofirma = $('btn-close-autofirma')
 const btnCancelAutofirma = $('btn-cancel-autofirma')
 const autofirmaBtnDownload = $('autofirma-btn-download')
-const autofirmaBtnSave = $('autofirma-btn-save')
-const autofirmaSaveResult = $('autofirma-save-result')
 const autofirmaErrorMsg = $('autofirma-error-msg')
 
 const AUTOFIRMA_STATES = ['loading', 'signing', 'success', 'error']
@@ -2048,7 +2046,6 @@ sigAutofirma.addEventListener('click', async () => {
   if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
 
   sigAutofirma.disabled = true
-  autofirmaSaveResult.style.display = 'none'
   showAutofirmaPanel('loading')
 
   let pdfBase64
@@ -2072,12 +2069,7 @@ sigAutofirma.addEventListener('click', async () => {
     'PAdES',
     '',
     (signatureB64) => {
-      // Guardar el Base64 del PDF firmado para los botones de acción
-      autofirmaPanel.dataset.signedB64 = signatureB64
-      autofirmaSaveResult.style.display = 'none'
       showAutofirmaPanel('success')
-
-      // Configurar botón de descarga
       autofirmaBtnDownload.onclick = () => {
         const bytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0))
         const blob = new Blob([bytes], { type: 'application/pdf' })
@@ -2088,23 +2080,6 @@ sigAutofirma.addEventListener('click', async () => {
         a.download = `${slugify(filename)}_firmado.pdf`
         a.click()
         setTimeout(() => URL.revokeObjectURL(url), 60_000)
-      }
-
-      // Configurar botón de guardado en servidor
-      autofirmaBtnSave.onclick = async () => {
-        autofirmaBtnSave.disabled = true
-        autofirmaSaveResult.textContent = 'Guardando…'
-        autofirmaSaveResult.style.display = 'block'
-        try {
-          await importSignedPdf(state.sessionId, signatureB64)
-          autofirmaSaveResult.textContent = '✓ PDF firmado guardado en el servidor'
-          showToast('PDF firmado guardado correctamente', 'success')
-        } catch (err) {
-          autofirmaSaveResult.textContent = `Error al guardar: ${err.message}`
-          showToast('Error al guardar el PDF firmado', 'error')
-        } finally {
-          autofirmaBtnSave.disabled = false
-        }
       }
     },
     (errorType, errorMessage, errorCode) => {

@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import path from 'node:path'
 import { getSession, updateSession } from '../services/sessionService.js'
+import { loadPdf, extractPages, applyTextBlocks, applyShapes, applyImages, applyFormValues } from '../services/pdfService.js'
 import { hasPdfMagicBytes } from '../utils/validation.js'
 
 // FINDING-09: maximum decoded size for an imported signed PDF (15 MB)
@@ -16,16 +16,47 @@ router.get('/:sessionId/export-pdf', async (req, res, next) => {
     if (!session) return res.status(404).json({ success: false, error: 'Session not found' })
 
     try {
-      await fsPromises.access(session.filePath, fs.constants.R_OK)
+      await fsPromises.access(session.filePath)
     } catch {
       return res.status(404).json({ success: false, error: 'PDF file not found on server' })
     }
 
-    const stat = await fsPromises.stat(session.filePath)
+    const doc = await loadPdf(session.filePath)
+    const indices = doc.getPageIndices()
+
+    if (session.formValues && Object.keys(session.formValues).length) {
+      await applyFormValues(doc, session.formValues)
+      try { doc.getForm().flatten() } catch { /* sin formulario */ }
+    }
+
+    const exportDoc = await extractPages(doc, indices)
+    const indexMap = new Map(indices.map((orig, pos) => [orig, pos]))
+
+    if (session.textBlocks?.length) {
+      const blocks = session.textBlocks
+        .filter(b => indexMap.has(b.pageIndex))
+        .map(b => ({ ...b, pageIndex: indexMap.get(b.pageIndex) }))
+      await applyTextBlocks(exportDoc, blocks)
+    }
+
+    if (session.shapes?.length) {
+      const shapes = session.shapes
+        .filter(s => indexMap.has(s.pageIndex))
+        .map(s => ({ ...s, pageIndex: indexMap.get(s.pageIndex) }))
+      await applyShapes(exportDoc, shapes)
+    }
+
+    if (session.images?.length) {
+      const imgs = session.images
+        .filter(img => indexMap.has(img.pageIndex))
+        .map(img => ({ ...img, pageIndex: indexMap.get(img.pageIndex) }))
+      await applyImages(exportDoc, imgs)
+    }
+
+    const bytes = await exportDoc.save()
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Length', stat.size)
     res.setHeader('Content-Disposition', 'inline; filename="documento.pdf"')
-    fs.createReadStream(session.filePath).pipe(res)
+    res.send(Buffer.from(bytes))
   } catch (err) {
     next(err)
   }

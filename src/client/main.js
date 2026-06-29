@@ -1518,6 +1518,40 @@ function startShapeResize(e, shape, el, handle) {
     }
     if (handle.includes('b')) { height = Math.max(MIN, startHeight + dy) }
 
+    if (me.ctrlKey && startWidth > 0 && startHeight > 0) {
+      const aspectRatio = startWidth / startHeight
+      const hasL = handle.includes('l')
+      const hasR = handle.includes('r')
+      const hasT = handle.includes('t')
+      const hasB = handle.includes('b')
+      const horizontalOnly = (hasL || hasR) && !hasT && !hasB
+      const verticalOnly = (hasT || hasB) && !hasL && !hasR
+
+      if (horizontalOnly) {
+        const newHeight = width / aspectRatio
+        top = startTop + (startHeight - newHeight) / 2
+        height = newHeight
+      } else if (verticalOnly) {
+        const newWidth = height * aspectRatio
+        left = startLeft + (startWidth - newWidth) / 2
+        width = newWidth
+      } else {
+        const relDw = Math.abs(width - startWidth) / startWidth
+        const relDh = Math.abs(height - startHeight) / startHeight
+        if (relDw >= relDh) {
+          const newHeight = width / aspectRatio
+          if (hasT) top = startTop + (startHeight - newHeight)
+          height = newHeight
+        } else {
+          const newWidth = height * aspectRatio
+          if (hasL) left = startLeft + (startWidth - newWidth)
+          width = newWidth
+        }
+      }
+      width = Math.max(MIN, width)
+      height = Math.max(MIN, height)
+    }
+
     el.style.left = left + 'px'
     el.style.top = top + 'px'
     el.style.width = width + 'px'
@@ -1710,6 +1744,40 @@ function startImageResize(e, img, el, handle) {
       if (nh >= MIN) { top = startTop + dy; height = nh }
     }
     if (handle.includes('b')) { height = Math.max(MIN, startHeight + dy) }
+
+    if (me.ctrlKey && startWidth > 0 && startHeight > 0) {
+      const aspectRatio = startWidth / startHeight
+      const hasL = handle.includes('l')
+      const hasR = handle.includes('r')
+      const hasT = handle.includes('t')
+      const hasB = handle.includes('b')
+      const horizontalOnly = (hasL || hasR) && !hasT && !hasB
+      const verticalOnly = (hasT || hasB) && !hasL && !hasR
+
+      if (horizontalOnly) {
+        const newHeight = width / aspectRatio
+        top = startTop + (startHeight - newHeight) / 2
+        height = newHeight
+      } else if (verticalOnly) {
+        const newWidth = height * aspectRatio
+        left = startLeft + (startWidth - newWidth) / 2
+        width = newWidth
+      } else {
+        const relDw = Math.abs(width - startWidth) / startWidth
+        const relDh = Math.abs(height - startHeight) / startHeight
+        if (relDw >= relDh) {
+          const newHeight = width / aspectRatio
+          if (hasT) top = startTop + (startHeight - newHeight)
+          height = newHeight
+        } else {
+          const newWidth = height * aspectRatio
+          if (hasL) left = startLeft + (startWidth - newWidth)
+          width = newWidth
+        }
+      }
+      width = Math.max(MIN, width)
+      height = Math.max(MIN, height)
+    }
 
     el.style.left = left + 'px'
     el.style.top = top + 'px'

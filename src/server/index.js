@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
+import { rateLimit } from 'express-rate-limit'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,7 +31,9 @@ async function cleanUploadsDir() {
 
 const app = express()
 
+// ── Security headers (FINDING-04) ─────────────────────────────
 app.use((req, res, next) => {
+  // FINDING-13: added base-uri 'self' to prevent <base> tag injection
   res.setHeader(
     'Content-Security-Policy',
     [
@@ -39,17 +42,57 @@ app.use((req, res, next) => {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob:",
+      // afirma:// is intentional for AutoFirma desktop app integration
       "connect-src 'self' ws://127.0.0.1:* wss://127.0.0.1:* afirma://*",
       "worker-src 'self' blob:",
       "frame-src 'none'",
       "object-src 'none'",
+      "base-uri 'self'",
     ].join('; ')
   )
+  // Prevent MIME-sniffing of responses
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  // Prevent embedding in iframes (clickjacking)
+  res.setHeader('X-Frame-Options', 'DENY')
+  // Limit referrer information leaked to third parties
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  // Restrict powerful browser features
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   next()
 })
 
-// Sign routes usan JSON con límite ampliado (PDFs en Base64 pueden superar 4 MB)
-app.use('/api/session', express.json({ limit: '50mb' }), signRoutes)
+// ── Rate limiting (FINDING-03) ─────────────────────────────────
+// Skip rate limiting in test environment to avoid interference with test suites
+const skipInTest = () => process.env.NODE_ENV === 'test'
+
+// General limit: covers all /api/* endpoints
+const standardLimit = rateLimit({
+  windowMs: 60_000,   // 1 minute
+  max: 120,           // 120 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+})
+
+// Heavy operations limit: upload, compress, import-signed-pdf
+const heavyLimit = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+})
+
+app.use('/api', standardLimit)
+app.use('/api/pdf/upload', heavyLimit)
+app.use('/api/pdf/compress', heavyLimit)
+app.use('/api/session', heavyLimit)
+
+// ── Body parsers ───────────────────────────────────────────────
+// FINDING-09: reduced from 50mb to 20mb for sign routes (PDFs in Base64)
+app.use('/api/session', express.json({ limit: '20mb' }), signRoutes)
 
 app.use(express.json({ limit: '4mb' }))
 

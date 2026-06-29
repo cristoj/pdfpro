@@ -43,6 +43,27 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>
           Fill Forms
         </button>
+        <div class="sig-wrapper" id="sig-wrapper">
+          <button id="btn-signature" class="toolbar-btn" title="Firma">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.333-3.333 5-6 5-8a3 3 0 0 0-6 0c0 2.5 3 7 9 13"/><path d="M14.5 10.5c1-1 2-2.5 2-4a2.5 2.5 0 0 0-5 0c0 1.5.5 2.5 2 4l1 1"/><path d="M3 21h18"/></svg>
+            Firma
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sig-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="signature-menu" class="signature-menu" style="display:none">
+            <button id="sig-import-image" class="signature-menu-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Importar imagen
+            </button>
+            <button id="sig-autofirma" class="signature-menu-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Autofirma
+            </button>
+            <button id="sig-draw" class="signature-menu-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              Dibujar
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="toolbar-right">
@@ -283,6 +304,24 @@
           <kbd class="kbd">ESC</kbd>
         </div>
         <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+
+    <!-- SIGNATURE DRAW MODAL -->
+    <div id="signature-draw-modal" class="signature-draw-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Dibujar firma">
+      <div class="signature-draw-content">
+        <div class="panel-header">
+          <h3>Dibujar firma</h3>
+          <button class="icon-btn" id="sig-draw-close" aria-label="Cerrar">✕</button>
+        </div>
+        <p class="signature-draw-hint">Dibuja tu firma con el ratón, lápiz o dedo</p>
+        <div class="signature-canvas-wrapper">
+          <canvas id="signature-canvas" class="signature-canvas" width="560" height="220"></canvas>
+        </div>
+        <div class="panel-footer">
+          <button id="sig-draw-clear" class="btn-secondary">Limpiar</button>
+          <button id="sig-draw-insert" class="btn-primary">Insertar firma</button>
+        </div>
       </div>
     </div>
 

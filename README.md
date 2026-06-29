@@ -22,6 +22,23 @@ Aplicación web de edición PDF estilo Adobe Acrobat, sin login, construida con 
 - Node.js >= 22
 - npm >= 10
 
+
+## Funcionalidades
+
+- **Importar PDF** — drag & drop o selector de archivo
+- **Visor** — renderizado canvas con PDF.js, zoom 25–400%, modo página y continuo
+- **Miniaturas** — sidebar con previews en 3 tamaños, drag & drop para reordenar
+- **Gestión de páginas** — reordenar, eliminar, añadir más PDFs (merge)
+- **Exportar** — rango de páginas configurable (`1,3,5-8`)
+- **Comprimir** — Ghostscript + fallback Node.js+sharp (soporta FlateDecode→JPEG); reduce hasta 90% en imágenes
+- **Edición de texto** — anotaciones con pdf-lib, tipografía configurable
+- **Firma** — importar imagen, Autofirma (integración), o dibujar a mano sobre PDF
+- **Formularios** — detectar y rellenar campos AcroForm
+- **Búsqueda** — CMD+K abre panel de búsqueda de texto
+- **Dark mode** — toggle con persistencia en localStorage
+- **Responsive mobile** — banner de aviso de diseño escritorio, sidebar overlay (≤768px), bottom sheet de herramientas
+
+
 ## Instalación
 
 ```bash
@@ -128,18 +145,3 @@ POST   /api/pdf/export              # { sessionId, range?: "1,3-5" } → PDF
 | `SESSION_TTL_MS` | `3600000` | TTL de sesiones en ms (1 hora) |
 | `UPLOAD_DIR` | `uploads` | Directorio para archivos temporales |
 | `MAX_FILE_SIZE_MB` | `100` | Tamaño máximo de PDF en MB |
-
-## Funcionalidades
-
-- **Importar PDF** — drag & drop o selector de archivo
-- **Visor** — renderizado canvas con PDF.js, zoom 25–400%, modo página y continuo
-- **Miniaturas** — sidebar con previews en 3 tamaños, drag & drop para reordenar
-- **Gestión de páginas** — reordenar, eliminar, añadir más PDFs (merge)
-- **Exportar** — rango de páginas configurable (`1,3,5-8`)
-- **Comprimir** — Ghostscript + fallback Node.js+sharp (soporta FlateDecode→JPEG); reduce hasta 90% en imágenes
-- **Edición de texto** — anotaciones con pdf-lib, tipografía configurable
-- **Firma** — importar imagen, Autofirma (integración), o dibujar a mano sobre PDF
-- **Formularios** — detectar y rellenar campos AcroForm
-- **Búsqueda** — CMD+K abre panel de búsqueda de texto
-- **Dark mode** — toggle con persistencia en localStorage
-- **Responsive mobile** — banner de aviso de diseño escritorio, sidebar overlay (≤768px), bottom sheet de herramientas

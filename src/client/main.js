@@ -1070,6 +1070,37 @@ toolAddImageBtn?.addEventListener('click', () => {
   imageFileInput?.click()
 })
 
+function compressImageIfNeeded(imgElement, originalSizeBytes) {
+  const MAX_BYTES = 1 * 1024 * 1024
+  if (originalSizeBytes <= MAX_BYTES) return Promise.resolve(null)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = imgElement.naturalWidth
+  canvas.height = imgElement.naturalHeight
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(imgElement, 0, 0)
+
+  const initialQuality = Math.min(0.92, (MAX_BYTES / originalSizeBytes) * 0.9)
+
+  return new Promise(resolve => {
+    const tryCompress = quality => {
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(null); return }
+        if (blob.size <= MAX_BYTES || quality <= 0.15) {
+          const r = new FileReader()
+          r.onload = e => resolve(e.target.result)
+          r.readAsDataURL(blob)
+        } else {
+          tryCompress(quality - 0.15)
+        }
+      }, 'image/jpeg', quality)
+    }
+    tryCompress(initialQuality)
+  })
+}
+
 imageFileInput?.addEventListener('change', e => {
   const file = e.target.files?.[0]
   if (!file || !state.sessionId) return
@@ -1082,6 +1113,10 @@ imageFileInput?.addEventListener('change', e => {
 
     const naturalImg = new Image()
     naturalImg.onload = async () => {
+      const compressed = await compressImageIfNeeded(naturalImg, file.size)
+      const finalDataUrl = compressed ?? dataUrl
+      const finalMime = compressed ? 'image/jpeg' : mimeType
+
       const aspect = naturalImg.naturalWidth / naturalImg.naturalHeight
       const maxW = Math.min(300, (state.pageWidthPt || 595) * 0.5)
       const w = maxW
@@ -1095,8 +1130,8 @@ imageFileInput?.addEventListener('change', e => {
         id: tempId,
         pageIndex: state.currentPage - 1,
         x, y, width: w, height: h,
-        imageData: dataUrl,
-        mimeType,
+        imageData: finalDataUrl,
+        mimeType: finalMime,
       }
 
       state.images.push(imgData)
@@ -1108,8 +1143,8 @@ imageFileInput?.addEventListener('change', e => {
         const { image: saved } = await addImage(state.sessionId, {
           pageIndex: imgData.pageIndex,
           x, y, width: w, height: h,
-          imageData: dataUrl,
-          mimeType,
+          imageData: finalDataUrl,
+          mimeType: finalMime,
         })
         const el = textLayer.querySelector(`[data-id="${tempId}"]`)
         Object.assign(imgData, saved)

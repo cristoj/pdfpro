@@ -331,6 +331,60 @@
     <!-- TOAST CONTAINER -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- AUTOFIRMA MODAL -->
+    <div id="autofirma-panel" class="panel-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="autofirma-title">
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3 id="autofirma-title">Firma digital con Autofirma</h3>
+          <button class="icon-btn panel-close" id="btn-close-autofirma" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="panel-body">
+
+          <!-- Estado: cargando -->
+          <div id="autofirma-state-loading" class="autofirma-state" style="display:none">
+            <div class="autofirma-spinner" aria-hidden="true"></div>
+            <p class="autofirma-msg">Preparando documento…</p>
+          </div>
+
+          <!-- Estado: esperando firma -->
+          <div id="autofirma-state-signing" class="autofirma-state" style="display:none">
+            <div class="autofirma-spinner" aria-hidden="true"></div>
+            <p class="autofirma-msg">Autofirma está abierto.</p>
+            <p class="autofirma-hint">Selecciona tu certificado digital y firma el documento en la ventana de Autofirma.</p>
+          </div>
+
+          <!-- Estado: éxito -->
+          <div id="autofirma-state-success" class="autofirma-state" style="display:none">
+            <div class="autofirma-icon autofirma-icon--success" aria-hidden="true">✓</div>
+            <p class="autofirma-msg">¡Documento firmado correctamente!</p>
+            <div class="autofirma-actions">
+              <button id="autofirma-btn-download" class="btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Descargar PDF firmado
+              </button>
+              <button id="autofirma-btn-save" class="btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Guardar en el servidor
+              </button>
+            </div>
+            <p id="autofirma-save-result" class="autofirma-hint" style="display:none"></p>
+          </div>
+
+          <!-- Estado: error -->
+          <div id="autofirma-state-error" class="autofirma-state" style="display:none">
+            <div class="autofirma-icon autofirma-icon--error" aria-hidden="true">✕</div>
+            <p class="autofirma-msg">No se pudo completar la firma</p>
+            <p id="autofirma-error-msg" class="autofirma-hint"></p>
+          </div>
+
+        </div>
+        <div class="panel-footer">
+          <button class="btn-secondary" id="btn-cancel-autofirma">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/autoscript.js"></script>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

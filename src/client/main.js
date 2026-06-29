@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage, exportPdfForSigning, importSignedPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -2001,35 +2001,126 @@ sigImportImage.addEventListener('click', () => {
   imageFileInput?.click()
 })
 
-// Opción 2: Autofirma
+// ── Autofirma ─────────────────────────────────────────────────
+const autofirmaPanel = $('autofirma-panel')
+const btnCloseAutofirma = $('btn-close-autofirma')
+const btnCancelAutofirma = $('btn-cancel-autofirma')
+const autofirmaBtnDownload = $('autofirma-btn-download')
+const autofirmaBtnSave = $('autofirma-btn-save')
+const autofirmaSaveResult = $('autofirma-save-result')
+const autofirmaErrorMsg = $('autofirma-error-msg')
+
+const AUTOFIRMA_STATES = ['loading', 'signing', 'success', 'error']
+
+function showAutofirmaPanel(stateName) {
+  autofirmaPanel.style.display = 'flex'
+  for (const s of AUTOFIRMA_STATES) {
+    $(`autofirma-state-${s}`).style.display = s === stateName ? 'flex' : 'none'
+  }
+}
+
+function closeAutofirmaPanel() {
+  autofirmaPanel.style.display = 'none'
+  sigAutofirma.disabled = false
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+btnCloseAutofirma.addEventListener('click', closeAutofirmaPanel)
+btnCancelAutofirma.addEventListener('click', closeAutofirmaPanel)
+autofirmaPanel.addEventListener('click', e => {
+  if (e.target === autofirmaPanel) closeAutofirmaPanel()
+})
+
+// Opción 2: Autofirma — debe invocarse estrictamente desde el click del usuario
 sigAutofirma.addEventListener('click', async () => {
   closeSignatureMenu()
   if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
+
+  sigAutofirma.disabled = true
+  autofirmaSaveResult.style.display = 'none'
+  showAutofirmaPanel('loading')
+
+  let pdfBase64
   try {
-    setLoading(true)
-    const blob = await exportPdf(state.sessionId)
-    const filename = ($('filename')?.value?.trim() || 'documento')
-    const pdfFilename = slugify(filename) + '.pdf'
-
-    // Descargar el PDF con nombre claro
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = pdfFilename
-    a.click()
-    URL.revokeObjectURL(url)
-
-    // Intentar abrir Autofirma vía protocolo nativo
-    setTimeout(() => {
-      window.location.href = 'autofirma://sign'
-    }, 500)
-
-    showToast('PDF descargado. Abriendo Autofirma…', 'success')
-  } catch {
-    showToast('Error al preparar el documento para Autofirma', 'error')
-  } finally {
-    setLoading(false)
+    const blob = await exportPdfForSigning(state.sessionId)
+    pdfBase64 = await blobToBase64(blob)
+  } catch (err) {
+    autofirmaErrorMsg.textContent = `No se pudo obtener el documento del servidor: ${err.message}`
+    showAutofirmaPanel('error')
+    sigAutofirma.disabled = false
+    return
   }
+
+  showAutofirmaPanel('signing')
+
+  // AutoScript.sign debe llamarse dentro del manejador de click (cadena async directa)
+  // eslint-disable-next-line no-undef
+  AutoScript.sign(
+    pdfBase64,
+    'SHA256',
+    'PAdES',
+    null,
+    (signatureB64) => {
+      // Guardar el Base64 del PDF firmado para los botones de acción
+      autofirmaPanel.dataset.signedB64 = signatureB64
+      autofirmaSaveResult.style.display = 'none'
+      showAutofirmaPanel('success')
+
+      // Configurar botón de descarga
+      autofirmaBtnDownload.onclick = () => {
+        const bytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0))
+        const blob = new Blob([bytes], { type: 'application/pdf' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        const filename = ($('filename')?.value?.trim() || 'documento')
+        a.href = url
+        a.download = `${slugify(filename)}_firmado.pdf`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      }
+
+      // Configurar botón de guardado en servidor
+      autofirmaBtnSave.onclick = async () => {
+        autofirmaBtnSave.disabled = true
+        autofirmaSaveResult.textContent = 'Guardando…'
+        autofirmaSaveResult.style.display = 'block'
+        try {
+          await importSignedPdf(state.sessionId, signatureB64)
+          autofirmaSaveResult.textContent = '✓ PDF firmado guardado en el servidor'
+          showToast('PDF firmado guardado correctamente', 'success')
+        } catch (err) {
+          autofirmaSaveResult.textContent = `Error al guardar: ${err.message}`
+          showToast('Error al guardar el PDF firmado', 'error')
+        } finally {
+          autofirmaBtnSave.disabled = false
+        }
+      }
+    },
+    (errorType, errorMessage) => {
+      if (errorType === '0' || errorType === 0) {
+        // Cancelación del usuario — no es un error real
+        closeAutofirmaPanel()
+        return
+      }
+      const msgs = {
+        '401': 'No se encontró un certificado válido.',
+        '403': 'Acceso denegado al certificado.',
+        '9001': 'Autofirma no está instalado o no se pudo conectar.',
+        '9002': 'Tiempo de espera agotado. Abre Autofirma e inténtalo de nuevo.',
+      }
+      autofirmaErrorMsg.textContent = msgs[String(errorType)] ?? `Error (${errorType}): ${errorMessage}`
+      showAutofirmaPanel('error')
+      sigAutofirma.disabled = false
+    }
+  )
 })
 
 // Opción 3: Dibujar firma
@@ -2174,4 +2265,13 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && signatureDrawModal.style.display !== 'none') {
     closeSignatureDrawModal()
   }
+  if (e.key === 'Escape' && autofirmaPanel?.style.display !== 'none') {
+    closeAutofirmaPanel()
+  }
 })
+
+// ── Inicialización AutoScript ─────────────────────────────────
+// Llamada única al cargar la página para establecer la conexión WebSocket con Autofirma
+if (typeof AutoScript !== 'undefined') {
+  AutoScript.cargarAppAfirma()
+}

@@ -24,6 +24,7 @@ const state = {
   selectedShapeId: null,
   images: [],                  // { id, pageIndex, x, y, width, height, imageData, mimeType }
   selectedImageId: null,
+  lastFile: null,           // File original — permite recuperar sesión perdida en Vercel
   // Forms mode
   formsMode: false,
   formFields: [],              // { name, fieldType, pageIndex, rect, pageHeight, checkBox, radioButton, options, multiSelect, defaultValue }
@@ -159,12 +160,14 @@ async function handleFiles(files, { forceNew = false } = {}) {
           state.sessionId = null
           sessionStorage.removeItem('pdfpro_session')
           data = await uploadPdf(files)
+          state.lastFile = files[0]
         } else {
           throw err
         }
       }
     } else {
       data = await uploadPdf(files)
+      state.lastFile = files[0]
     }
 
     if (data.sessionId) {
@@ -806,7 +809,23 @@ $('btn-confirm-compress').addEventListener('click', async () => {
   compressResult.style.display = 'none'
 
   try {
-    const result = await compressPdf(state.sessionId, _compressLevel)
+    let result
+    try {
+      result = await compressPdf(state.sessionId, _compressLevel)
+    } catch (err) {
+      if (err.message.includes('Session not found') && state.lastFile) {
+        const uploadData = await uploadPdf([state.lastFile])
+        if (uploadData.sessionId) {
+          state.sessionId = uploadData.sessionId
+          sessionStorage.setItem('pdfpro_session', uploadData.sessionId)
+          state.pages = uploadData.pages
+          state.totalPages = uploadData.pages.length
+        }
+        result = await compressPdf(state.sessionId, _compressLevel)
+      } else {
+        throw err
+      }
+    }
     const reduced = result.sizeBytes < result.originalBytes
     if (reduced) {
       const saving = Math.round((1 - result.sizeBytes / result.originalBytes) * 100)

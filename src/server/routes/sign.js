@@ -3,6 +3,10 @@ import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import path from 'node:path'
 import { getSession, updateSession } from '../services/sessionService.js'
+import { hasPdfMagicBytes } from '../utils/validation.js'
+
+// FINDING-09: maximum decoded size for an imported signed PDF (15 MB)
+const MAX_SIGNED_PDF_BYTES = 15 * 1024 * 1024
 
 const router = Router()
 
@@ -44,7 +48,13 @@ router.post('/:sessionId/import-signed-pdf', async (req, res, next) => {
       return res.status(422).json({ success: false, error: 'Invalid Base64 data' })
     }
 
-    if (pdfBuffer.length < 4 || pdfBuffer.slice(0, 4).toString('ascii') !== '%PDF') {
+    // FINDING-09: enforce decoded size limit to prevent disk exhaustion
+    if (pdfBuffer.length > MAX_SIGNED_PDF_BYTES) {
+      return res.status(413).json({ success: false, error: 'Signed PDF exceeds maximum allowed size (15 MB)' })
+    }
+
+    // FINDING-09: verify PDF magic bytes using shared utility (more robust than ascii comparison)
+    if (!hasPdfMagicBytes(pdfBuffer)) {
       return res.status(422).json({ success: false, error: 'Decoded data is not a valid PDF' })
     }
 

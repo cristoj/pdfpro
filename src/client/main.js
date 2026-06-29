@@ -1,5 +1,5 @@
 import Sortable from 'sortablejs'
-import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage } from './services/apiClient.js'
+import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compressPdf, getTextBlocks, addTextBlock, updateTextBlock, deleteTextBlock, getShapes, addShape, updateShape, deleteShape, getFormValues, fillFormFields, getImages, addImage, updateImage, deleteImage, exportPdfForSigning, importSignedPdf } from './services/apiClient.js'
 import { parseRange } from './utils/pageRange.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -1959,3 +1959,301 @@ textLayer.addEventListener('dblclick', e => {
   if (!block) return
   enterBlockEditMode(block, blockEl, blockEl.querySelector('.text-block-content'))
 })
+
+// ── Firma ─────────────────────────────────────────────────────
+const sigWrapper = $('sig-wrapper')
+const btnSignature = $('btn-signature')
+const signatureMenu = $('signature-menu')
+const sigImportImage = $('sig-import-image')
+const sigAutofirma = $('sig-autofirma')
+const sigDrawBtn = $('sig-draw')
+const signatureDrawModal = $('signature-draw-modal')
+const sigDrawClose = $('sig-draw-close')
+const signatureCanvas = $('signature-canvas')
+const sigDrawClear = $('sig-draw-clear')
+const sigDrawInsert = $('sig-draw-insert')
+
+// Abrir/cerrar dropdown
+btnSignature.addEventListener('click', e => {
+  e.stopPropagation()
+  const isOpen = signatureMenu.style.display !== 'none'
+  signatureMenu.style.display = isOpen ? 'none' : 'block'
+  sigWrapper.classList.toggle('sig-wrapper--open', !isOpen)
+})
+
+document.addEventListener('click', e => {
+  if (!sigWrapper.contains(e.target)) {
+    signatureMenu.style.display = 'none'
+    sigWrapper.classList.remove('sig-wrapper--open')
+  }
+})
+
+function closeSignatureMenu() {
+  signatureMenu.style.display = 'none'
+  sigWrapper.classList.remove('sig-wrapper--open')
+}
+
+// Opción 1: Importar imagen — reutiliza imageFileInput existente
+sigImportImage.addEventListener('click', () => {
+  closeSignatureMenu()
+  if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
+  if (!state.editMode) setEditMode(true)
+  imageFileInput?.click()
+})
+
+// ── Autofirma ─────────────────────────────────────────────────
+const autofirmaPanel = $('autofirma-panel')
+const btnCloseAutofirma = $('btn-close-autofirma')
+const btnCancelAutofirma = $('btn-cancel-autofirma')
+const autofirmaBtnDownload = $('autofirma-btn-download')
+const autofirmaErrorMsg = $('autofirma-error-msg')
+
+const AUTOFIRMA_STATES = ['loading', 'signing', 'success', 'error']
+
+function showAutofirmaPanel(stateName) {
+  autofirmaPanel.style.display = 'flex'
+  for (const s of AUTOFIRMA_STATES) {
+    $(`autofirma-state-${s}`).style.display = s === stateName ? 'flex' : 'none'
+  }
+}
+
+function closeAutofirmaPanel() {
+  autofirmaPanel.style.display = 'none'
+  sigAutofirma.disabled = false
+}
+
+async function blobToBase64(blob) {
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  // Convertir en chunks para evitar stack overflow en PDFs grandes
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength)))
+  }
+  return btoa(binary)
+}
+
+btnCloseAutofirma.addEventListener('click', closeAutofirmaPanel)
+btnCancelAutofirma.addEventListener('click', closeAutofirmaPanel)
+autofirmaPanel.addEventListener('click', e => {
+  if (e.target === autofirmaPanel) closeAutofirmaPanel()
+})
+
+// Opción 2: Autofirma — debe invocarse estrictamente desde el click del usuario
+sigAutofirma.addEventListener('click', async () => {
+  closeSignatureMenu()
+  if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
+
+  sigAutofirma.disabled = true
+  showAutofirmaPanel('loading')
+
+  let pdfBase64
+  try {
+    const blob = await exportPdfForSigning(state.sessionId)
+    pdfBase64 = await blobToBase64(blob)
+  } catch (err) {
+    autofirmaErrorMsg.textContent = `No se pudo obtener el documento del servidor: ${err.message}`
+    showAutofirmaPanel('error')
+    sigAutofirma.disabled = false
+    return
+  }
+
+  showAutofirmaPanel('signing')
+
+  // AutoScript.sign debe llamarse dentro del manejador de click (cadena async directa)
+  // eslint-disable-next-line no-undef
+  AutoScript.sign(
+    pdfBase64,
+    'SHA256withRSA',
+    'PAdES',
+    '',
+    (signatureB64) => {
+      showAutofirmaPanel('success')
+      autofirmaBtnDownload.onclick = () => {
+        const bytes = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0))
+        const blob = new Blob([bytes], { type: 'application/pdf' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        const filename = ($('filename')?.value?.trim() || 'documento')
+        a.href = url
+        a.download = `${slugify(filename)}_firmado.pdf`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      }
+    },
+    (errorType, errorMessage, errorCode) => {
+      if (errorType === '0' || errorType === 0 ||
+          errorType === 'es.gob.afirma.core.AOCancelledOperationException') {
+        closeAutofirmaPanel()
+        return
+      }
+      const code = errorCode || errorType
+      const msgs = {
+        '401': 'No se encontró un certificado válido.',
+        '403': 'Acceso denegado al certificado.',
+        'SAF_02': 'Operación cancelada por el usuario.',
+        'SAF_03': 'Parámetros de firma inválidos. Comprueba que el PDF no está protegido.',
+        '9001': 'Autofirma no está instalado o no se pudo conectar.',
+        '9002': 'Tiempo de espera agotado. Abre Autofirma e inténtalo de nuevo.',
+      }
+      const display = msgs[String(code)] ?? (errorMessage ? `${code}: ${errorMessage}` : `Error de firma (${code})`)
+      autofirmaErrorMsg.textContent = display
+      showAutofirmaPanel('error')
+      sigAutofirma.disabled = false
+    }
+  )
+})
+
+// Opción 3: Dibujar firma
+sigDrawBtn.addEventListener('click', () => {
+  closeSignatureMenu()
+  if (!state.sessionId) return showToast('Primero importa un PDF', 'error')
+  openSignatureDrawModal()
+})
+
+// ── Modal de dibujo de firma ──────────────────────────────────
+let sigDrawing = false
+let sigCtx = null
+let sigHasStrokes = false
+
+function openSignatureDrawModal() {
+  signatureDrawModal.style.display = 'flex'
+  initSignatureCanvas()
+}
+
+function closeSignatureDrawModal() {
+  signatureDrawModal.style.display = 'none'
+  sigDrawing = false
+  sigHasStrokes = false
+}
+
+function initSignatureCanvas() {
+  sigCtx = signatureCanvas.getContext('2d')
+  clearSignatureCanvas()
+}
+
+function clearSignatureCanvas() {
+  if (!sigCtx) return
+  sigCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height)
+  sigCtx.fillStyle = '#ffffff'
+  sigCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height)
+  sigHasStrokes = false
+}
+
+function getCanvasPoint(e) {
+  const rect = signatureCanvas.getBoundingClientRect()
+  const scaleX = signatureCanvas.width / rect.width
+  const scaleY = signatureCanvas.height / rect.height
+  const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0
+  const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+  }
+}
+
+signatureCanvas.addEventListener('pointerdown', e => {
+  e.preventDefault()
+  sigDrawing = true
+  sigHasStrokes = true
+  signatureCanvas.setPointerCapture(e.pointerId)
+  const { x, y } = getCanvasPoint(e)
+  sigCtx.beginPath()
+  sigCtx.moveTo(x, y)
+  sigCtx.strokeStyle = '#1a1a1a'
+  sigCtx.lineWidth = e.pressure > 0 && e.pressure < 1 ? Math.max(1, e.pressure * 4) : 2
+  sigCtx.lineCap = 'round'
+  sigCtx.lineJoin = 'round'
+})
+
+signatureCanvas.addEventListener('pointermove', e => {
+  if (!sigDrawing) return
+  e.preventDefault()
+  const { x, y } = getCanvasPoint(e)
+  sigCtx.lineTo(x, y)
+  sigCtx.lineWidth = e.pressure > 0 && e.pressure < 1 ? Math.max(1, e.pressure * 4) : 2
+  sigCtx.stroke()
+  sigCtx.beginPath()
+  sigCtx.moveTo(x, y)
+})
+
+signatureCanvas.addEventListener('pointerup', e => {
+  if (!sigDrawing) return
+  e.preventDefault()
+  sigDrawing = false
+  sigCtx.closePath()
+})
+
+sigDrawClose.addEventListener('click', closeSignatureDrawModal)
+
+signatureDrawModal.addEventListener('click', e => {
+  if (e.target === signatureDrawModal) closeSignatureDrawModal()
+})
+
+sigDrawClear.addEventListener('click', clearSignatureCanvas)
+
+sigDrawInsert.addEventListener('click', async () => {
+  if (!sigHasStrokes) return showToast('Dibuja una firma primero', 'error')
+
+  const dataUrl = signatureCanvas.toDataURL('image/png')
+  closeSignatureDrawModal()
+
+  if (!state.editMode) setEditMode(true)
+
+  const aspect = signatureCanvas.width / signatureCanvas.height
+  const maxW = Math.min(200, (state.pageWidthPt || 595) * 0.35)
+  const w = maxW
+  const h = w / aspect
+  const x = ((state.pageWidthPt || 595) - w) / 2
+  const y = (state.pageHeightPt || 842) * 0.1
+
+  const tempId = `tmp-sig-${Date.now()}`
+  const imgData = {
+    id: tempId,
+    pageIndex: state.currentPage - 1,
+    x, y, width: w, height: h,
+    imageData: dataUrl,
+    mimeType: 'image/png',
+  }
+
+  state.images.push(imgData)
+  createImageElement(imgData)
+  selectImage(tempId)
+  setActiveTool('select')
+
+  try {
+    const { image: saved } = await addImage(state.sessionId, {
+      pageIndex: imgData.pageIndex,
+      x, y, width: w, height: h,
+      imageData: dataUrl,
+      mimeType: 'image/png',
+    })
+    const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+    Object.assign(imgData, saved)
+    if (el) el.dataset.id = imgData.id
+    if (state.selectedImageId === tempId) state.selectedImageId = imgData.id
+    showToast('Firma insertada', 'success')
+  } catch {
+    state.images = state.images.filter(i => i.id !== tempId)
+    const el = textLayer.querySelector(`[data-id="${tempId}"]`)
+    if (el) el.remove()
+    showToast('Error al insertar la firma', 'error')
+  }
+})
+
+// Cerrar modal de firma con Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && signatureDrawModal.style.display !== 'none') {
+    closeSignatureDrawModal()
+  }
+  if (e.key === 'Escape' && autofirmaPanel?.style.display !== 'none') {
+    closeAutofirmaPanel()
+  }
+})
+
+// ── Inicialización AutoScript ─────────────────────────────────
+// Llamada única al cargar la página para establecer la conexión WebSocket con Autofirma
+if (typeof AutoScript !== 'undefined') {
+  AutoScript.cargarAppAfirma()
+}

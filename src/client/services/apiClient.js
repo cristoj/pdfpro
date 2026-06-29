@@ -131,3 +131,23 @@ export async function updateImage(sessionId, id, patch) {
 export async function deleteImage(sessionId, id) {
   return request('DELETE', `/images/${id}`, { sessionId })
 }
+
+export async function exportPdfForSigning(sessionId) {
+  const res = await fetch(`/api/session/${sessionId}/export-pdf`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error ?? 'Error al obtener el PDF')
+  }
+  return res.blob()
+}
+
+export async function importSignedPdf(sessionId, signedPdfB64) {
+  const res = await fetch(`/api/session/${sessionId}/import-signed-pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signedPdfB64 }),
+  })
+  const data = await res.json().catch(() => ({ success: false, error: res.statusText }))
+  if (!data.success) throw new Error(data.error ?? 'Error al guardar el PDF firmado')
+  return data
+}

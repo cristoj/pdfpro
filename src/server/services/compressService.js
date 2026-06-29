@@ -1,17 +1,25 @@
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib'
 import fs from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import os from 'node:os'
 import path from 'node:path'
+import sharp from 'sharp'
 
 const execFileAsync = promisify(execFile)
 
-// Ghostscript PDFSETTINGS por nivel de compresión
+// Ghostscript PDFSETTINGS por nivel (entornos con gs instalado)
 const GS_SETTINGS = {
-  low: '/printer',    // 300 dpi — compresión suave, preserva calidad
+  low: '/printer',    // 300 dpi — compresión suave
   medium: '/ebook',   // 150 dpi — compresión moderada
   high: '/screen',    // 72 dpi — máxima compresión
+}
+
+// Calidad JPEG para el fallback Node.js puro
+const JPEG_QUALITY = {
+  low: 82,
+  medium: 60,
+  high: 35,
 }
 
 async function compressWithGhostscript(inputPath, level) {
@@ -35,7 +43,40 @@ async function compressWithGhostscript(inputPath, level) {
   return compressed
 }
 
-async function compressWithPdfLib(filePath, level) {
+// Recomprime imágenes JPEG embebidas usando sharp
+async function recompressJpegImages(doc, quality) {
+  const context = doc.context
+
+  for (const [ref, obj] of context.enumerateIndirectObjects()) {
+    if (!(obj instanceof PDFRawStream)) continue
+
+    try {
+      const subtype = obj.dict.get(PDFName.of('Subtype'))
+      const filter = obj.dict.get(PDFName.of('Filter'))
+
+      const isImage =
+        subtype instanceof PDFName && subtype.asString().includes('Image')
+      const isJpeg =
+        filter instanceof PDFName && filter.asString().includes('DCT')
+
+      if (!isImage || !isJpeg) continue
+
+      const jpegBytes = Buffer.from(obj.contents)
+      const recompressed = await sharp(jpegBytes).jpeg({ quality }).toBuffer()
+
+      if (recompressed.length >= jpegBytes.length) continue
+
+      const newDict = obj.dict.clone(context)
+      newDict.set(PDFName.of('Length'), PDFNumber.of(recompressed.length))
+      const newStream = PDFRawStream.of(newDict, new Uint8Array(recompressed))
+      context.assign(ref, newStream)
+    } catch {
+      // Ignorar imágenes que sharp no puede procesar
+    }
+  }
+}
+
+async function compressWithNodeJs(filePath, level) {
   const bytes = await fs.readFile(filePath)
   const doc = await PDFDocument.load(bytes, { updateMetadata: false })
 
@@ -57,6 +98,11 @@ async function compressWithPdfLib(filePath, level) {
     }
   }
 
+  if (level === 'medium' || level === 'high') {
+    const quality = JPEG_QUALITY[level] ?? JPEG_QUALITY.medium
+    await recompressJpegImages(doc, quality)
+  }
+
   return Buffer.from(await doc.save({ useObjectStreams: true }))
 }
 
@@ -66,11 +112,11 @@ export async function compressPdf(filePath, level = 'medium') {
   try {
     compressed = await compressWithGhostscript(filePath, level)
   } catch {
-    // gs no disponible o falló — usar pdf-lib como fallback
-    compressed = await compressWithPdfLib(filePath, level)
+    // gs no disponible (ej. Vercel) — usar Node.js puro
+    compressed = await compressWithNodeJs(filePath, level)
   }
 
-  // Solo sobrescribir si la compresión redujo el tamaño
+  // Solo sobreescribir si la compresión redujo el tamaño
   const original = await fs.readFile(filePath)
   if (compressed.byteLength < original.byteLength) {
     await fs.writeFile(filePath, compressed)

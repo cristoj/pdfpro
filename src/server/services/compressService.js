@@ -107,8 +107,10 @@ async function compressWithNodeJs(filePath, level) {
 }
 
 export async function compressPdf(filePath, level = 'medium') {
-  let compressed
+  const original = await fs.readFile(filePath)
+  const originalSize = original.byteLength
 
+  let compressed
   try {
     compressed = await compressWithGhostscript(filePath, level)
   } catch {
@@ -116,12 +118,10 @@ export async function compressPdf(filePath, level = 'medium') {
     compressed = await compressWithNodeJs(filePath, level)
   }
 
-  // Solo sobreescribir si la compresión redujo el tamaño
-  const original = await fs.readFile(filePath)
-  if (compressed.byteLength < original.byteLength) {
+  if (compressed.byteLength < originalSize) {
     await fs.writeFile(filePath, compressed)
-    return compressed.byteLength
+    return { newSize: compressed.byteLength, originalSize }
   }
 
-  return original.byteLength
+  return { newSize: originalSize, originalSize }
 }

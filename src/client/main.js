@@ -2024,13 +2024,16 @@ function closeAutofirmaPanel() {
   sigAutofirma.disabled = false
 }
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
+async function blobToBase64(blob) {
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  // Convertir en chunks para evitar stack overflow en PDFs grandes
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength)))
+  }
+  return btoa(binary)
 }
 
 btnCloseAutofirma.addEventListener('click', closeAutofirmaPanel)
@@ -2067,7 +2070,7 @@ sigAutofirma.addEventListener('click', async () => {
     pdfBase64,
     'SHA256',
     'PAdES',
-    null,
+    '',
     (signatureB64) => {
       // Guardar el Base64 del PDF firmado para los botones de acción
       autofirmaPanel.dataset.signedB64 = signatureB64
@@ -2104,19 +2107,23 @@ sigAutofirma.addEventListener('click', async () => {
         }
       }
     },
-    (errorType, errorMessage) => {
-      if (errorType === '0' || errorType === 0) {
-        // Cancelación del usuario — no es un error real
+    (errorType, errorMessage, errorCode) => {
+      if (errorType === '0' || errorType === 0 ||
+          errorType === 'es.gob.afirma.core.AOCancelledOperationException') {
         closeAutofirmaPanel()
         return
       }
+      const code = errorCode || errorType
       const msgs = {
         '401': 'No se encontró un certificado válido.',
         '403': 'Acceso denegado al certificado.',
+        'SAF_02': 'Operación cancelada por el usuario.',
+        'SAF_03': 'Parámetros de firma inválidos. Comprueba que el PDF no está protegido.',
         '9001': 'Autofirma no está instalado o no se pudo conectar.',
         '9002': 'Tiempo de espera agotado. Abre Autofirma e inténtalo de nuevo.',
       }
-      autofirmaErrorMsg.textContent = msgs[String(errorType)] ?? `Error (${errorType}): ${errorMessage}`
+      const display = msgs[String(code)] ?? (errorMessage ? `${code}: ${errorMessage}` : `Error de firma (${code})`)
+      autofirmaErrorMsg.textContent = display
       showAutofirmaPanel('error')
       sigAutofirma.disabled = false
     }

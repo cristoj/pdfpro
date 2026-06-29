@@ -5,12 +5,22 @@ const TTL_MS = Number(process.env.SESSION_TTL_MS ?? 3_600_000)
 
 const sessions = new Map()
 
+/**
+ * Delete all files associated with a session from disk.
+ * @param {{ filePath?: string, signedFilePath?: string }} session
+ */
+function cleanSessionFiles(session) {
+  if (session.filePath) fs.unlink(session.filePath).catch(() => {})
+  // FINDING-06: also clean up signed PDF created by /import-signed-pdf
+  if (session.signedFilePath) fs.unlink(session.signedFilePath).catch(() => {})
+}
+
 function purgeExpired() {
   const now = Date.now()
   for (const [id, session] of sessions) {
     if (now - session.createdAt > TTL_MS) {
       sessions.delete(id)
-      if (session.filePath) fs.unlink(session.filePath).catch(() => {})
+      cleanSessionFiles(session)
     }
   }
 }
@@ -35,6 +45,8 @@ export function updateSession(id, patch) {
 }
 
 export function deleteSession(id) {
+  const session = sessions.get(id)
+  if (session) cleanSessionFiles(session)
   sessions.delete(id)
 }
 

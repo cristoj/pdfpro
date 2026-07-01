@@ -7,3 +7,5 @@ playwright-report/
 test-results/
 .vite/
 .claude/settings.local.json
+# Local AI runtime state
+.atl/

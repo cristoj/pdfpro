@@ -9,6 +9,7 @@ import pdfRoutes from './routes/pdf.js'
 import pagesRoutes from './routes/pages.js'
 import toolsRoutes from './routes/tools.js'
 import signRoutes from './routes/sign.js'
+import agentRoutes from './routes/agent.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT ?? 3000
@@ -99,6 +100,7 @@ app.use(express.json({ limit: '4mb' }))
 app.use('/api/pdf', pdfRoutes)
 app.use('/api/pdf', pagesRoutes)
 app.use('/api/pdf', toolsRoutes)
+app.use('/api/agent', agentRoutes)
 
 app.use(errorHandler)
 

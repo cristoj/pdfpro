@@ -1,512 +1,677 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDFPro — Advanced PDF Editor</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="stylesheet" href="./styles/global.css" />
-    <script>
-      if (window.innerWidth <= 1024 && !localStorage.getItem('pdfpro-mobile-banner-dismissed')) {
-        document.documentElement.classList.add('mobile-banner-active');
-      }
-    </script>
-  </head>
-  <body class="bg-bg font-sans text-text antialiased">
 
-    <!-- TOOLBAR -->
-    <header id="toolbar" class="toolbar">
-      <div class="toolbar-left">
-        <button id="btn-sidebar-toggle" class="icon-btn btn-sidebar-toggle" title="Mostrar páginas" aria-label="Mostrar panel de páginas">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <div class="logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4" y="2" width="12" height="16" rx="2" fill="var(--color-accent)" opacity="0.15"/>
-            <rect x="4" y="2" width="12" height="16" rx="2" stroke="var(--color-accent)" stroke-width="1.5"/>
-            <path d="M8 7h6M8 10h6M8 13h4" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round"/>
-            <rect x="10" y="8" width="10" height="14" rx="2" fill="var(--color-bg)" stroke="var(--color-accent)" stroke-width="1.5"/>
-            <path d="M13 13h4M13 16h4M13 10h2" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span class="logo-text">PDFPro</span>
-        </div>
-        <div id="filename-wrapper" class="filename-wrapper">
-          <input id="filename" class="filename-input" type="text" value="Sin título" spellcheck="false" />
-        </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDFPro — Advanced PDF Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="./styles/global.css" />
+  <script>
+    if (window.innerWidth <= 1024 && !localStorage.getItem('pdfpro-mobile-banner-dismissed')) {
+      document.documentElement.classList.add('mobile-banner-active');
+    }
+  </script>
+</head>
+
+<body class="bg-bg font-sans text-text antialiased">
+
+  <!-- TOOLBAR -->
+  <header id="toolbar" class="toolbar">
+    <div class="toolbar-left">
+      <button id="btn-sidebar-toggle" class="icon-btn btn-sidebar-toggle" title="Mostrar páginas"
+        aria-label="Mostrar panel de páginas">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="2" width="12" height="16" rx="2" fill="var(--color-accent)" opacity="0.15" />
+          <rect x="4" y="2" width="12" height="16" rx="2" stroke="var(--color-accent)" stroke-width="1.5" />
+          <path d="M8 7h6M8 10h6M8 13h4" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" />
+          <rect x="10" y="8" width="10" height="14" rx="2" fill="var(--color-bg)" stroke="var(--color-accent)"
+            stroke-width="1.5" />
+          <path d="M13 13h4M13 16h4M13 10h2" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+        <span class="logo-text">PDFPro</span>
       </div>
-
-      <div class="toolbar-center">
-        <button id="btn-compress" class="toolbar-btn" title="Comprimir PDF">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10M12 22v-10M4.93 4.93l7.07 7.07M19.07 4.93l-7.07 7.07M2 12h10M22 12h-10M4.93 19.07l7.07-7.07M19.07 19.07l-7.07-7.07"/></svg>
-          Compress
-        </button>
-        <button id="btn-edit" class="toolbar-btn" title="Modo edición">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit
-        </button>
-        <button id="btn-forms" class="toolbar-btn" title="Rellenar formularios">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>
-          Fill Forms
-        </button>
-        <div class="sig-wrapper" id="sig-wrapper">
-          <button id="btn-signature" class="toolbar-btn" title="Firma">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.333-3.333 5-6 5-8a3 3 0 0 0-6 0c0 2.5 3 7 9 13"/><path d="M14.5 10.5c1-1 2-2.5 2-4a2.5 2.5 0 0 0-5 0c0 1.5.5 2.5 2 4l1 1"/><path d="M3 21h18"/></svg>
-            Firma
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sig-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <div id="signature-menu" class="signature-menu" style="display:none">
-            <button id="sig-import-image" class="signature-menu-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Importar imagen
-            </button>
-            <button id="sig-autofirma" class="signature-menu-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Autofirma
-            </button>
-            <button id="sig-draw" class="signature-menu-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-              Dibujar
-            </button>
-          </div>
-        </div>
+      <div id="filename-wrapper" class="filename-wrapper">
+        <input id="filename" class="filename-input" type="text" value="Sin título" spellcheck="false" />
       </div>
-
-      <div class="toolbar-right">
-        <button id="btn-mobile-tools" class="icon-btn btn-mobile-tools" title="Herramientas" aria-label="Herramientas">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-        </button>
-        <button id="btn-search" class="icon-btn" title="Buscar (⌘K)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </button>
-        <button id="btn-darkmode" class="icon-btn" title="Alternar modo oscuro">
-          <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        </button>
-        <button id="btn-upload" class="btn-primary" title="Importar PDF">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span class="btn-label">Importar PDF</span>
-        </button>
-        <button id="btn-export" class="btn-accent" title="Exportar PDF">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="btn-label">Exportar</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- MOBILE BANNER -->
-    <div id="mobile-banner" class="mobile-banner" role="alert" aria-live="polite">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span class="mobile-banner-text">Esta aplicación está diseñada para escritorio. La experiencia en dispositivos móviles puede ser limitada.</span>
-      <button id="mobile-banner-close" class="mobile-banner-close" aria-label="Cerrar aviso">✕</button>
     </div>
 
-    <!-- LOADING BAR -->
-    <div id="loading-bar" class="loading-bar"></div>
-
-    <!-- MAIN LAYOUT -->
-    <div class="app-layout">
-
-      <!-- SIDEBAR BACKDROP (mobile) -->
-      <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
-
-      <!-- SIDEBAR -->
-      <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-          <span class="sidebar-title">Páginas</span>
-          <div class="thumbnail-size-control">
-            <button class="size-btn" data-size="sm" title="Pequeño">S</button>
-            <button class="size-btn size-btn--active" data-size="md" title="Mediano">M</button>
-            <button class="size-btn" data-size="lg" title="Grande">L</button>
-          </div>
-        </div>
-
-        <div id="selection-bar" class="selection-bar" style="display:none">
-          <span id="selection-count" class="selection-count"></span>
-          <div class="selection-actions">
-            <button id="btn-select-all" class="sel-btn" title="Seleccionar todo">Todo</button>
-            <button id="btn-deselect" class="sel-btn" title="Deseleccionar todo">Ninguna</button>
-            <button id="btn-delete-selection" class="sel-btn sel-btn--danger" title="Eliminar seleccionadas">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              Eliminar
-            </button>
-          </div>
-        </div>
-
-        <div id="page-list" class="page-list" data-size="md">
-          <!-- Miniaturas generadas dinámicamente -->
-          <div class="empty-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 7h6M9 10h6M9 13h4"/></svg>
-            <p>Importa un PDF para comenzar</p>
-          </div>
-        </div>
-
-        <div id="sidebar-resize" class="sidebar-resize" aria-hidden="true">
-          <svg class="sidebar-resize__icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#3B82F6"><path d="M360-160q-33 0-56.5-23.5T280-240q0-33 23.5-56.5T360-320q33 0 56.5 23.5T440-240q0 33-23.5 56.5T360-160Zm240 0q-33 0-56.5-23.5T520-240q0-33 23.5-56.5T600-320q33 0 56.5 23.5T680-240q0 33-23.5 56.5T600-160ZM360-400q-33 0-56.5-23.5T280-480q0-33 23.5-56.5T360-560q33 0 56.5 23.5T440-480q0 33-23.5 56.5T360-400Zm240 0q-33 0-56.5-23.5T520-480q0-33 23.5-56.5T600-560q33 0 56.5 23.5T680-480q0 33-23.5 56.5T600-400ZM360-640q-33 0-56.5-23.5T280-720q0-33 23.5-56.5T360-800q33 0 56.5 23.5T440-720q0 33-23.5 56.5T360-640Zm240 0q-33 0-56.5-23.5T520-720q0-33 23.5-56.5T600-800q33 0 56.5 23.5T680-720q0 33-23.5 56.5T600-640Z"/></svg>
-        </div>
-
-        <div class="sidebar-footer">
-          <button id="btn-add-pdf" class="btn-secondary" style="display:none">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Añadir más PDFs
+    <div class="toolbar-center">
+      <button id="btn-compress" class="toolbar-btn" title="Comprimir PDF">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12 2v10M12 22v-10M4.93 4.93l7.07 7.07M19.07 4.93l-7.07 7.07M2 12h10M22 12h-10M4.93 19.07l7.07-7.07M19.07 19.07l-7.07-7.07" />
+        </svg>
+        Compress
+      </button>
+      <button id="btn-edit" class="toolbar-btn" title="Modo edición">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        Edit
+      </button>
+      <button id="btn-forms" class="toolbar-btn" title="Rellenar formularios">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M7 8h10M7 12h6M7 16h4" />
+        </svg>
+        Fill Forms
+      </button>
+      <div class="sig-wrapper" id="sig-wrapper">
+        <button id="btn-signature" class="toolbar-btn" title="Firma">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 17c3.333-3.333 5-6 5-8a3 3 0 0 0-6 0c0 2.5 3 7 9 13" />
+            <path d="M14.5 10.5c1-1 2-2.5 2-4a2.5 2.5 0 0 0-5 0c0 1.5.5 2.5 2 4l1 1" />
+            <path d="M3 21h18" />
+          </svg>
+          Firma
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" class="sig-chevron">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        <div id="signature-menu" class="signature-menu" style="display:none">
+          <button id="sig-import-image" class="signature-menu-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Importar imagen
+          </button>
+          <button id="sig-autofirma" class="signature-menu-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Autofirma
+          </button>
+          <button id="sig-draw" class="signature-menu-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </svg>
+            Dibujar
           </button>
         </div>
-      </aside>
+      </div>
+    </div>
 
-      <!-- VIEWER -->
-      <main id="viewer" class="viewer">
+    <div class="toolbar-right">
+      <button id="btn-mobile-tools" class="icon-btn btn-mobile-tools" title="Herramientas" aria-label="Herramientas">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="12" cy="19" r="2" />
+        </svg>
+      </button>
+      <button id="btn-search" class="icon-btn" title="Buscar (⌘K)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+      </button>
+      <button id="btn-darkmode" class="icon-btn" title="Alternar modo oscuro">
+        <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5" />
+          <path
+            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+      </button>
+      <button id="btn-upload" class="btn-primary" title="Importar PDF">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <span class="btn-label">Importar PDF</span>
+      </button>
+      <button id="btn-export" class="btn-accent" title="Exportar PDF">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        <span class="btn-label">Exportar</span>
+      </button>
+    </div>
+  </header>
 
-        <!-- EDIT TOOLBAR -->
-        <div id="edit-toolbar" class="edit-toolbar" style="display:none">
-          <div class="tool-group">
-            <button id="tool-select" class="tool-btn tool-btn--active" title="Seleccionar (V)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l14 9-7 2-4 6z"/></svg>
-              Seleccionar
-            </button>
-            <button id="tool-add-text" class="tool-btn" title="Añadir texto (T)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-              Texto
-            </button>
-            <button id="tool-rect" class="tool-btn" title="Rectángulo (R)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
-              Rect
-            </button>
-            <button id="tool-circle" class="tool-btn" title="Círculo (C)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
-              Círculo
-            </button>
-            <button id="tool-add-image" class="tool-btn" title="Añadir imagen (I)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Imagen
-            </button>
-            <input id="image-file-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" />
-          </div>
-          <div class="tool-sep"></div>
-          <div id="typography-controls" class="tool-group">
-            <select id="font-family-select" class="font-select" title="Fuente">
-              <option value="Helvetica">Geist Sans</option>
-              <option value="Courier">JetBrains Mono</option>
-            </select>
-            <input id="font-size-input" type="number" class="font-size-input" value="14" min="6" max="144" step="1" title="Tamaño (pt)" />
-            <button id="btn-bold" class="tool-btn" title="Negrita"><b>B</b></button>
-            <button id="btn-italic" class="tool-btn" title="Cursiva"><i>I</i></button>
-            <label class="color-picker-label" title="Color del texto">
-              <input id="font-color-input" type="color" class="color-picker-input" value="#000000" />
-            </label>
-          </div>
-          <div id="shape-controls-sep" class="tool-sep" style="display:none"></div>
-          <div id="shape-controls" class="tool-group" style="display:none">
-            <label class="color-picker-label" title="Color de relleno">
-              <input id="shape-fill-color" type="color" class="color-picker-input" value="#ffffff" />
-            </label>
-            <label class="shape-no-fill-label" title="Sin relleno">
-              <input id="shape-no-fill" type="checkbox" class="shape-no-fill-cb" />
-              <span class="shape-no-fill-text">Sin relleno</span>
-            </label>
-            <div class="tool-sep" style="height:16px;margin:0 var(--space-1)"></div>
-            <label class="color-picker-label" title="Color de borde">
-              <input id="shape-stroke-color" type="color" class="color-picker-input" value="#000000" />
-            </label>
-            <input id="shape-stroke-width" type="number" class="font-size-input" value="2" min="0" max="20" step="0.5" title="Grosor del borde (pt)" style="width:48px" />
-          </div>
-          <div class="tool-sep"></div>
-          <button id="btn-delete-block" class="tool-btn tool-btn--danger" title="Eliminar elemento seleccionado" style="display:none">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+  <!-- MOBILE BANNER -->
+  <div id="mobile-banner" class="mobile-banner" role="alert" aria-live="polite">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+    <span class="mobile-banner-text">Esta aplicación está diseñada para escritorio. La experiencia en dispositivos
+      móviles puede ser limitada.</span>
+    <button id="mobile-banner-close" class="mobile-banner-close" aria-label="Cerrar aviso">✕</button>
+  </div>
+
+  <!-- LOADING BAR -->
+  <div id="loading-bar" class="loading-bar"></div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="app-layout">
+
+    <!-- SIDEBAR BACKDROP (mobile) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Páginas</span>
+        <div class="thumbnail-size-control">
+          <button class="size-btn" data-size="sm" title="Pequeño">S</button>
+          <button class="size-btn size-btn--active" data-size="md" title="Mediano">M</button>
+          <button class="size-btn" data-size="lg" title="Grande">L</button>
+        </div>
+      </div>
+
+      <div id="selection-bar" class="selection-bar" style="display:none">
+        <span id="selection-count" class="selection-count"></span>
+        <div class="selection-actions">
+          <button id="btn-select-all" class="sel-btn" title="Seleccionar todo">Todo</button>
+          <button id="btn-deselect" class="sel-btn" title="Deseleccionar todo">Ninguna</button>
+          <button id="btn-delete-selection" class="sel-btn sel-btn--danger" title="Eliminar seleccionadas">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14H6L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4h6v2" />
+            </svg>
             Eliminar
           </button>
         </div>
+      </div>
 
-        <div id="drop-zone" class="drop-zone">
-          <div class="drop-zone-content">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <h2>Arrastra un PDF aquí</h2>
-            <p>o <button class="link-btn" id="btn-browse">selecciona un archivo</button></p>
-            <p class="muted">Máx. 100 MB · PDF únicamente</p>
-          </div>
+      <div id="page-list" class="page-list" data-size="md">
+        <!-- Miniaturas generadas dinámicamente -->
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+            stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+            <rect x="4" y="2" width="16" height="20" rx="2" />
+            <path d="M9 7h6M9 10h6M9 13h4" />
+          </svg>
+          <p>Importa un PDF para comenzar</p>
         </div>
+      </div>
 
-        <div id="pdf-canvas-wrapper" class="pdf-canvas-wrapper" style="display:none">
-          <!-- Vista página única -->
-          <div id="canvas-container" class="canvas-container">
-            <canvas id="pdf-canvas"></canvas>
-            <div id="text-layer" class="text-layer"></div>
-          </div>
-          <!-- Vista continua -->
-          <div id="continuous-view" class="continuous-view" style="display:none"></div>
-        </div>
+      <div id="sidebar-resize" class="sidebar-resize" aria-hidden="true">
+        <svg class="sidebar-resize__icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960"
+          width="24px" fill="#3B82F6">
+          <path
+            d="M360-160q-33 0-56.5-23.5T280-240q0-33 23.5-56.5T360-320q33 0 56.5 23.5T440-240q0 33-23.5 56.5T360-160Zm240 0q-33 0-56.5-23.5T520-240q0-33 23.5-56.5T600-320q33 0 56.5 23.5T680-240q0 33-23.5 56.5T600-160ZM360-400q-33 0-56.5-23.5T280-480q0-33 23.5-56.5T360-560q33 0 56.5 23.5T440-480q0 33-23.5 56.5T360-400Zm240 0q-33 0-56.5-23.5T520-480q0-33 23.5-56.5T600-560q33 0 56.5 23.5T680-480q0 33-23.5 56.5T600-400ZM360-640q-33 0-56.5-23.5T280-720q0-33 23.5-56.5T360-800q33 0 56.5 23.5T440-720q0 33-23.5 56.5T360-640Zm240 0q-33 0-56.5-23.5T520-720q0-33 23.5-56.5T600-800q33 0 56.5 23.5T680-720q0 33-23.5 56.5T600-640Z" />
+        </svg>
+      </div>
 
-        <!-- VIEWER CONTROLS -->
-        <div id="viewer-controls" class="viewer-controls" style="display:none">
-          <div class="controls-left">
-            <button id="btn-first" class="control-btn" title="Primera página">⟨⟨</button>
-            <button id="btn-prev" class="control-btn" title="Página anterior">⟨</button>
-            <span class="page-indicator">
-              Pág <input id="current-page" type="number" min="1" value="1" class="page-input" /> de <span id="total-pages">1</span>
-            </span>
-            <button id="btn-next" class="control-btn" title="Página siguiente">⟩</button>
-            <button id="btn-last" class="control-btn" title="Última página">⟩⟩</button>
-          </div>
-          <div class="controls-right">
-            <button id="btn-zoom-out" class="control-btn" title="Alejar">−</button>
-            <span id="zoom-level" class="zoom-display">100%</span>
-            <button id="btn-zoom-in" class="control-btn" title="Acercar">+</button>
-            <button id="btn-fit-width" class="control-btn" title="Ajustar ancho">↔</button>
-            <button id="btn-fit-height" class="control-btn" title="Ajustar alto">↕</button>
-            <button id="btn-view-page" class="control-btn" title="Página única">□</button>
-            <button id="btn-view-cont" class="control-btn control-btn--active" title="Vista continua">≡</button>
-          </div>
-        </div>
-      </main>
-    </div>
+      <div class="sidebar-footer">
+        <button id="btn-add-pdf" class="btn-secondary" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Añadir más PDFs
+        </button>
+      </div>
+    </aside>
 
-    <!-- COMPRESS PANEL OVERLAY -->
-    <div id="compress-panel" class="panel-overlay" style="display:none">
-      <div class="panel-card">
-        <div class="panel-header">
-          <h3>Comprimir PDF</h3>
-          <button class="icon-btn panel-close" id="btn-close-compress">✕</button>
+    <!-- VIEWER -->
+    <main id="viewer" class="viewer">
+
+      <!-- EDIT TOOLBAR -->
+      <div id="edit-toolbar" class="edit-toolbar" style="display:none">
+        <div class="tool-group">
+          <button id="tool-select" class="tool-btn tool-btn--active" title="Seleccionar (V)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 3l14 9-7 2-4 6z" />
+            </svg>
+            Seleccionar
+          </button>
+          <button id="tool-add-text" class="tool-btn" title="Añadir texto (T)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 7 4 4 20 4 20 7" />
+              <line x1="9" y1="20" x2="15" y2="20" />
+              <line x1="12" y1="4" x2="12" y2="20" />
+            </svg>
+            Texto
+          </button>
+          <button id="tool-rect" class="tool-btn" title="Rectángulo (R)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+            </svg>
+            Rect
+          </button>
+          <button id="tool-circle" class="tool-btn" title="Círculo (C)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+            Círculo
+          </button>
+          <button id="tool-add-image" class="tool-btn" title="Añadir imagen (I)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Imagen
+          </button>
+          <input id="image-file-input" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" />
         </div>
-        <div class="panel-body">
-          <label class="field-label">Nivel de compresión
-            <div class="compress-levels">
-              <button class="compress-level-btn compress-level-btn--active" data-level="low">
-                <span class="compress-level-name">Bajo</span>
-              </button>
-              <button class="compress-level-btn" data-level="medium">
-                <span class="compress-level-name">Medio</span>
-              </button>
-              <button class="compress-level-btn" data-level="high">
-                <span class="compress-level-name">Alto</span>
-              </button>
-            </div>
+        <div class="tool-sep"></div>
+        <div id="typography-controls" class="tool-group">
+          <select id="font-family-select" class="font-select" title="Fuente">
+            <option value="Helvetica">Geist Sans</option>
+            <option value="Courier">JetBrains Mono</option>
+          </select>
+          <input id="font-size-input" type="number" class="font-size-input" value="14" min="6" max="144" step="1"
+            title="Tamaño (pt)" />
+          <button id="btn-bold" class="tool-btn" title="Negrita"><b>B</b></button>
+          <button id="btn-italic" class="tool-btn" title="Cursiva"><i>I</i></button>
+          <label class="color-picker-label" title="Color del texto">
+            <input id="font-color-input" type="color" class="color-picker-input" value="#000000" />
           </label>
-          <p id="compress-result" class="field-hint" style="display:none"></p>
         </div>
-        <div class="panel-footer">
-          <button class="btn-secondary" id="btn-cancel-compress">Cancelar</button>
-          <button class="btn-primary" id="btn-confirm-compress">Comprimir ahora</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- EXPORT PANEL OVERLAY -->
-    <div id="export-panel" class="panel-overlay" style="display:none">
-      <div class="panel-card">
-        <div class="panel-header">
-          <h3>Exportar PDF</h3>
-          <button class="icon-btn panel-close" id="btn-close-export">✕</button>
-        </div>
-        <div class="panel-body">
-          <label class="field-label">Nombre del archivo
-            <input id="export-filename" class="field-input" type="text" value="export.pdf" />
+        <div id="shape-controls-sep" class="tool-sep" style="display:none"></div>
+        <div id="shape-controls" class="tool-group" style="display:none">
+          <label class="color-picker-label" title="Color de relleno">
+            <input id="shape-fill-color" type="color" class="color-picker-input" value="#ffffff" />
           </label>
-          <label class="field-label">Rango de páginas
-            <input id="export-range" class="field-input" type="text" placeholder="ej: 1,3,5-8 — vacío = todas" />
+          <label class="shape-no-fill-label" title="Sin relleno">
+            <input id="shape-no-fill" type="checkbox" class="shape-no-fill-cb" />
+            <span class="shape-no-fill-text">Sin relleno</span>
           </label>
-          <p id="export-range-error" class="field-error" style="display:none"></p>
-          <p class="field-hint" id="export-page-count">Total: — páginas</p>
+          <div class="tool-sep" style="height:16px;margin:0 var(--space-1)"></div>
+          <label class="color-picker-label" title="Color de borde">
+            <input id="shape-stroke-color" type="color" class="color-picker-input" value="#000000" />
+          </label>
+          <input id="shape-stroke-width" type="number" class="font-size-input" value="2" min="0" max="20" step="0.5"
+            title="Grosor del borde (pt)" style="width:48px" />
         </div>
-        <div class="panel-footer">
-          <button class="btn-secondary" id="btn-cancel-export">Cancelar</button>
-          <button class="btn-primary" id="btn-confirm-export">Exportar ahora</button>
+        <div class="tool-sep"></div>
+        <button id="btn-delete-block" class="tool-btn tool-btn--danger" title="Eliminar elemento seleccionado"
+          style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14H6L5 6" />
+            <path d="M10 11v6M14 11v6" />
+            <path d="M9 6V4h6v2" />
+          </svg>
+          Eliminar
+        </button>
+      </div>
+
+      <div id="drop-zone" class="drop-zone">
+        <div class="drop-zone-content">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+            stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <h2>Arrastra un PDF aquí</h2>
+          <p>o <button class="link-btn" id="btn-browse">selecciona un archivo</button></p>
+          <p class="muted">Máx. 100 MB · PDF únicamente</p>
         </div>
       </div>
-    </div>
 
-    <!-- SEARCH PANEL OVERLAY -->
-    <div id="search-panel" class="panel-overlay" style="display:none">
-      <div class="panel-card panel-card--search">
-        <div class="search-input-wrapper">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="search-input" class="search-input" type="text" placeholder="Buscar en el documento…" />
-          <kbd class="kbd">ESC</kbd>
+      <div id="pdf-canvas-wrapper" class="pdf-canvas-wrapper" style="display:none">
+        <!-- Vista página única -->
+        <div id="canvas-container" class="canvas-container">
+          <canvas id="pdf-canvas"></canvas>
+          <div id="text-layer" class="text-layer"></div>
         </div>
-        <div id="search-results" class="search-results"></div>
+        <!-- Vista continua -->
+        <div id="continuous-view" class="continuous-view" style="display:none"></div>
       </div>
-    </div>
 
-    <!-- MOBILE TOOLS SHEET -->
-    <div id="mobile-tools-sheet" class="mobile-tools-sheet" style="display:none" role="dialog" aria-modal="true" aria-label="Herramientas">
-      <div class="mobile-tools-backdrop"></div>
-      <div class="mobile-tools-content">
-        <div class="mobile-tools-handle" aria-hidden="true"></div>
-        <div class="mobile-tools-header">
-          <span class="mobile-tools-title">Herramientas</span>
-          <button class="icon-btn" id="mobile-tools-close" aria-label="Cerrar">✕</button>
+      <!-- VIEWER CONTROLS -->
+      <div id="viewer-controls" class="viewer-controls" style="display:none">
+        <div class="controls-left">
+          <button id="btn-first" class="control-btn" title="Primera página">⟨⟨</button>
+          <button id="btn-prev" class="control-btn" title="Página anterior">⟨</button>
+          <span class="page-indicator">
+            Pág <input id="current-page" type="number" min="1" value="1" class="page-input" /> de <span
+              id="total-pages">1</span>
+          </span>
+          <button id="btn-next" class="control-btn" title="Página siguiente">⟩</button>
+          <button id="btn-last" class="control-btn" title="Última página">⟩⟩</button>
         </div>
-        <div class="mobile-tools-list">
-          <button class="mobile-tool-item" data-target="btn-compress">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10M12 22v-10M4.93 4.93l7.07 7.07M19.07 4.93l-7.07 7.07M2 12h10M22 12h-10M4.93 19.07l7.07-7.07M19.07 19.07l-7.07-7.07"/></svg>
-            <span>Comprimir PDF</span>
-          </button>
-          <button class="mobile-tool-item" data-target="btn-edit">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <span>Editar</span>
-          </button>
-          <button class="mobile-tool-item" data-target="btn-forms">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>
-            <span>Rellenar formularios</span>
-          </button>
-          <div class="mobile-tool-group-label">Firma</div>
-          <button class="mobile-tool-item" data-target="sig-import-image">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span>Importar imagen de firma</span>
-          </button>
-          <button class="mobile-tool-item" data-target="sig-autofirma">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            <span>Autofirma</span>
-          </button>
-          <button class="mobile-tool-item" data-target="sig-draw">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-            <span>Dibujar firma</span>
-          </button>
+        <div class="controls-right">
+          <button id="btn-zoom-out" class="control-btn" title="Alejar">−</button>
+          <span id="zoom-level" class="zoom-display">100%</span>
+          <button id="btn-zoom-in" class="control-btn" title="Acercar">+</button>
+          <button id="btn-fit-width" class="control-btn" title="Ajustar ancho">↔</button>
+          <button id="btn-fit-height" class="control-btn" title="Ajustar alto">↕</button>
+          <button id="btn-view-page" class="control-btn" title="Página única">□</button>
+          <button id="btn-view-cont" class="control-btn control-btn--active" title="Vista continua">≡</button>
         </div>
       </div>
-    </div>
+    </main>
+  </div>
 
-    <!-- SIGNATURE DRAW MODAL -->
-    <div id="signature-draw-modal" class="signature-draw-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Dibujar firma">
-      <div class="signature-draw-content">
-        <div class="panel-header">
-          <h3>Dibujar firma</h3>
-          <button class="icon-btn" id="sig-draw-close" aria-label="Cerrar">✕</button>
-        </div>
-        <p class="signature-draw-hint">Dibuja tu firma con el ratón, lápiz o dedo</p>
-        <div class="signature-canvas-wrapper">
-          <canvas id="signature-canvas" class="signature-canvas" width="560" height="220"></canvas>
-        </div>
-        <div class="panel-footer">
-          <button id="sig-draw-clear" class="btn-secondary">Limpiar</button>
-          <button id="sig-draw-insert" class="btn-primary">Insertar firma</button>
-        </div>
+  <!-- COMPRESS PANEL OVERLAY -->
+  <div id="compress-panel" class="panel-overlay" style="display:none">
+    <div class="panel-card">
+      <div class="panel-header">
+        <h3>Comprimir PDF</h3>
+        <button class="icon-btn panel-close" id="btn-close-compress">✕</button>
       </div>
-    </div>
-
-    <!-- HIDDEN FILE INPUT -->
-    <input type="file" id="file-input" accept=".pdf,application/pdf" multiple style="display:none" />
-
-    <!-- TOAST CONTAINER -->
-    <div id="toast-container" class="toast-container"></div>
-
-    <!-- AUTOFIRMA MODAL -->
-    <div id="autofirma-panel" class="panel-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="autofirma-title">
-      <div class="panel-card">
-        <div class="panel-header">
-          <h3 id="autofirma-title">Firma digital con Autofirma</h3>
-          <button class="icon-btn panel-close" id="btn-close-autofirma" aria-label="Cerrar">✕</button>
-        </div>
-        <div class="panel-body">
-
-          <!-- Estado: cargando -->
-          <div id="autofirma-state-loading" class="autofirma-state" style="display:none">
-            <div class="autofirma-spinner" aria-hidden="true"></div>
-            <p class="autofirma-msg">Preparando documento…</p>
+      <div class="panel-body">
+        <label class="field-label">Nivel de compresión
+          <div class="compress-levels">
+            <button class="compress-level-btn compress-level-btn--active" data-level="low">
+              <span class="compress-level-name">Bajo</span>
+            </button>
+            <button class="compress-level-btn" data-level="medium">
+              <span class="compress-level-name">Medio</span>
+            </button>
+            <button class="compress-level-btn" data-level="high">
+              <span class="compress-level-name">Alto</span>
+            </button>
           </div>
-
-          <!-- Estado: esperando firma -->
-          <div id="autofirma-state-signing" class="autofirma-state" style="display:none">
-            <div class="autofirma-spinner" aria-hidden="true"></div>
-            <p class="autofirma-msg">Autofirma está abierto.</p>
-            <p class="autofirma-hint">Selecciona tu certificado digital y firma el documento en la ventana de Autofirma.</p>
-          </div>
-
-          <!-- Estado: éxito -->
-          <div id="autofirma-state-success" class="autofirma-state" style="display:none">
-            <div class="autofirma-icon autofirma-icon--success" aria-hidden="true">✓</div>
-            <p class="autofirma-msg">¡Documento firmado correctamente!</p>
-            <div class="autofirma-actions">
-              <button id="autofirma-btn-download" class="btn-primary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Descargar PDF firmado
-              </button>
-            </div>
-          </div>
-
-          <!-- Estado: error -->
-          <div id="autofirma-state-error" class="autofirma-state" style="display:none">
-            <div class="autofirma-icon autofirma-icon--error" aria-hidden="true">✕</div>
-            <p class="autofirma-msg">No se pudo completar la firma</p>
-            <p id="autofirma-error-msg" class="autofirma-hint"></p>
-          </div>
-
-        </div>
-        <div class="panel-footer">
-          <button class="btn-secondary" id="btn-cancel-autofirma">Cerrar</button>
-        </div>
+        </label>
+        <p id="compress-result" class="field-hint" style="display:none"></p>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-secondary" id="btn-cancel-compress">Cancelar</button>
+        <button class="btn-primary" id="btn-confirm-compress">Comprimir ahora</button>
       </div>
     </div>
+  </div>
 
-    <script src="/autoscript.js"></script>
-    <script>
-      (function () {
-        var html = document.documentElement;
+  <!-- EXPORT PANEL OVERLAY -->
+  <div id="export-panel" class="panel-overlay" style="display:none">
+    <div class="panel-card">
+      <div class="panel-header">
+        <h3>Exportar PDF</h3>
+        <button class="icon-btn panel-close" id="btn-close-export">✕</button>
+      </div>
+      <div class="panel-body">
+        <label class="field-label">Nombre del archivo
+          <input id="export-filename" class="field-input" type="text" value="export.pdf" />
+        </label>
+        <label class="field-label">Rango de páginas
+          <input id="export-range" class="field-input" type="text" placeholder="ej: 1,3,5-8 — vacío = todas" />
+        </label>
+        <p id="export-range-error" class="field-error" style="display:none"></p>
+        <p class="field-hint" id="export-page-count">Total: — páginas</p>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-secondary" id="btn-cancel-export">Cancelar</button>
+        <button class="btn-primary" id="btn-confirm-export">Exportar ahora</button>
+      </div>
+    </div>
+  </div>
 
-        // Mobile banner dismiss
-        var banner = document.getElementById('mobile-banner');
-        var bannerClose = document.getElementById('mobile-banner-close');
-        if (bannerClose) {
-          bannerClose.addEventListener('click', function () {
-            banner.style.display = 'none';
-            html.classList.remove('mobile-banner-active');
-            localStorage.setItem('pdfpro-mobile-banner-dismissed', '1');
+  <!-- SEARCH PANEL OVERLAY -->
+  <div id="search-panel" class="panel-overlay" style="display:none">
+    <div class="panel-card panel-card--search">
+      <div class="search-input-wrapper">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input id="search-input" class="search-input" type="text" placeholder="Buscar en el documento…" />
+        <kbd class="kbd">ESC</kbd>
+      </div>
+      <div id="search-results" class="search-results"></div>
+    </div>
+  </div>
+
+  <!-- MOBILE TOOLS SHEET -->
+  <div id="mobile-tools-sheet" class="mobile-tools-sheet" style="display:none" role="dialog" aria-modal="true"
+    aria-label="Herramientas">
+    <div class="mobile-tools-backdrop"></div>
+    <div class="mobile-tools-content">
+      <div class="mobile-tools-handle" aria-hidden="true"></div>
+      <div class="mobile-tools-header">
+        <span class="mobile-tools-title">Herramientas</span>
+        <button class="icon-btn" id="mobile-tools-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="mobile-tools-list">
+        <button class="mobile-tool-item" data-target="btn-compress">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M12 2v10M12 22v-10M4.93 4.93l7.07 7.07M19.07 4.93l-7.07 7.07M2 12h10M22 12h-10M4.93 19.07l7.07-7.07M19.07 19.07l-7.07-7.07" />
+          </svg>
+          <span>Comprimir PDF</span>
+        </button>
+        <button class="mobile-tool-item" data-target="btn-edit">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          <span>Editar</span>
+        </button>
+        <button class="mobile-tool-item" data-target="btn-forms">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M7 8h10M7 12h6M7 16h4" />
+          </svg>
+          <span>Rellenar formularios</span>
+        </button>
+        <div class="mobile-tool-group-label">Firma</div>
+        <button class="mobile-tool-item" data-target="sig-import-image">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          <span>Importar imagen de firma</span>
+        </button>
+        <button class="mobile-tool-item" data-target="sig-autofirma">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+          <span>Autofirma</span>
+        </button>
+        <button class="mobile-tool-item" data-target="sig-draw">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+          </svg>
+          <span>Dibujar firma</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNATURE DRAW MODAL -->
+  <div id="signature-draw-modal" class="signature-draw-modal" style="display:none" role="dialog" aria-modal="true"
+    aria-label="Dibujar firma">
+    <div class="signature-draw-content">
+      <div class="panel-header">
+        <h3>Dibujar firma</h3>
+        <button class="icon-btn" id="sig-draw-close" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="signature-draw-hint">Dibuja tu firma con el ratón, lápiz o dedo</p>
+      <div class="signature-canvas-wrapper">
+        <canvas id="signature-canvas" class="signature-canvas" width="560" height="220"></canvas>
+      </div>
+      <div class="panel-footer">
+        <button id="sig-draw-clear" class="btn-secondary">Limpiar</button>
+        <button id="sig-draw-insert" class="btn-primary">Insertar firma</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN FILE INPUT -->
+  <input type="file" id="file-input" accept=".pdf,application/pdf" multiple style="display:none" />
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- AUTOFIRMA MODAL -->
+  <div id="autofirma-panel" class="panel-overlay" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="autofirma-title">
+    <div class="panel-card">
+      <div class="panel-header">
+        <h3 id="autofirma-title">Firma digital con Autofirma</h3>
+        <button class="icon-btn panel-close" id="btn-close-autofirma" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="panel-body">
+
+        <!-- Estado: cargando -->
+        <div id="autofirma-state-loading" class="autofirma-state" style="display:none">
+          <div class="autofirma-spinner" aria-hidden="true"></div>
+          <p class="autofirma-msg">Preparando documento…</p>
+        </div>
+
+        <!-- Estado: esperando firma -->
+        <div id="autofirma-state-signing" class="autofirma-state" style="display:none">
+          <div class="autofirma-spinner" aria-hidden="true"></div>
+          <p class="autofirma-msg">Autofirma está abierto.</p>
+          <p class="autofirma-hint">Selecciona tu certificado digital y firma el documento en la ventana de Autofirma.
+          </p>
+        </div>
+
+        <!-- Estado: éxito -->
+        <div id="autofirma-state-success" class="autofirma-state" style="display:none">
+          <div class="autofirma-icon autofirma-icon--success" aria-hidden="true">✓</div>
+          <p class="autofirma-msg">¡Documento firmado correctamente!</p>
+          <div class="autofirma-actions">
+            <button id="autofirma-btn-download" class="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Descargar PDF firmado
+            </button>
+          </div>
+        </div>
+
+        <!-- Estado: error -->
+        <div id="autofirma-state-error" class="autofirma-state" style="display:none">
+          <div class="autofirma-icon autofirma-icon--error" aria-hidden="true">✕</div>
+          <p class="autofirma-msg">No se pudo completar la firma</p>
+          <p id="autofirma-error-msg" class="autofirma-hint"></p>
+        </div>
+
+      </div>
+      <div class="panel-footer">
+        <button class="btn-secondary" id="btn-cancel-autofirma">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/autoscript.js"></script>
+  <script>
+    (function () {
+      var html = document.documentElement;
+
+      // Mobile banner dismiss
+      var banner = document.getElementById('mobile-banner');
+      var bannerClose = document.getElementById('mobile-banner-close');
+      if (bannerClose) {
+        bannerClose.addEventListener('click', function () {
+          banner.style.display = 'none';
+          html.classList.remove('mobile-banner-active');
+          localStorage.setItem('pdfpro-mobile-banner-dismissed', '1');
+        });
+      }
+
+      // Sidebar toggle (mobile)
+      var sidebar = document.getElementById('sidebar');
+      var backdrop = document.getElementById('sidebar-backdrop');
+      var toggleBtn = document.getElementById('btn-sidebar-toggle');
+
+      function openSidebar() {
+        sidebar.classList.add('sidebar--open');
+        html.classList.add('sidebar-open');
+      }
+      function closeSidebar() {
+        sidebar.classList.remove('sidebar--open');
+        html.classList.remove('sidebar-open');
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+          sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
+        });
+      }
+      if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+      }
+
+      // Mobile tools bottom sheet
+      var toolsSheet = document.getElementById('mobile-tools-sheet');
+      var toolsClose = document.getElementById('mobile-tools-close');
+      var toolsBtn = document.getElementById('btn-mobile-tools');
+      var toolsBackdrop = toolsSheet ? toolsSheet.querySelector('.mobile-tools-backdrop') : null;
+
+      function openToolsSheet() {
+        toolsSheet.style.display = 'flex';
+        document.documentElement.classList.add('tools-sheet-open');
+      }
+      function closeToolsSheet() {
+        toolsSheet.style.display = 'none';
+        document.documentElement.classList.remove('tools-sheet-open');
+      }
+
+      if (toolsBtn) toolsBtn.addEventListener('click', openToolsSheet);
+      if (toolsClose) toolsClose.addEventListener('click', closeToolsSheet);
+      if (toolsBackdrop) toolsBackdrop.addEventListener('click', closeToolsSheet);
+
+      if (toolsSheet) {
+        toolsSheet.querySelectorAll('[data-target]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            closeToolsSheet();
+            var target = document.getElementById(btn.dataset.target);
+            if (target) target.click();
           });
-        }
+        });
+      }
+    })();
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
 
-        // Sidebar toggle (mobile)
-        var sidebar = document.getElementById('sidebar');
-        var backdrop = document.getElementById('sidebar-backdrop');
-        var toggleBtn = document.getElementById('btn-sidebar-toggle');
-
-        function openSidebar() {
-          sidebar.classList.add('sidebar--open');
-          html.classList.add('sidebar-open');
-        }
-        function closeSidebar() {
-          sidebar.classList.remove('sidebar--open');
-          html.classList.remove('sidebar-open');
-        }
-
-        if (toggleBtn) {
-          toggleBtn.addEventListener('click', function () {
-            sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
-          });
-        }
-        if (backdrop) {
-          backdrop.addEventListener('click', closeSidebar);
-        }
-
-        // Mobile tools bottom sheet
-        var toolsSheet = document.getElementById('mobile-tools-sheet');
-        var toolsClose = document.getElementById('mobile-tools-close');
-        var toolsBtn = document.getElementById('btn-mobile-tools');
-        var toolsBackdrop = toolsSheet ? toolsSheet.querySelector('.mobile-tools-backdrop') : null;
-
-        function openToolsSheet() {
-          toolsSheet.style.display = 'flex';
-          document.documentElement.classList.add('tools-sheet-open');
-        }
-        function closeToolsSheet() {
-          toolsSheet.style.display = 'none';
-          document.documentElement.classList.remove('tools-sheet-open');
-        }
-
-        if (toolsBtn) toolsBtn.addEventListener('click', openToolsSheet);
-        if (toolsClose) toolsClose.addEventListener('click', closeToolsSheet);
-        if (toolsBackdrop) toolsBackdrop.addEventListener('click', closeToolsSheet);
-
-        if (toolsSheet) {
-          toolsSheet.querySelectorAll('[data-target]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-              closeToolsSheet();
-              var target = document.getElementById(btn.dataset.target);
-              if (target) target.click();
-            });
-          });
-        }
-      })();
-    </script>
-    <script type="module" src="./main.js"></script>
-  </body>
 </html>

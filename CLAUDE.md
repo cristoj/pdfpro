@@ -41,21 +41,24 @@ En producción, el servidor sirve el `dist/` generado por Vite. En desarrollo, V
 ```
 src/
 ├── server/
-│   ├── index.js                   # app Express, monta rutas, llama listen()
+│   ├── index.js                   # app Express, CSP/headers/rate limiting, monta rutas, llama listen()
 │   ├── routes/pdf.js              # upload, add, export
 │   ├── routes/pages.js            # reorder, delete, preview, list
 │   ├── routes/tools.js            # compress, search, text/*, form/fill
+│   ├── routes/sign.js             # export-pdf (aplica ediciones en memoria) e import-signed-pdf (Autofirma)
 │   ├── services/sessionService.js # Map en memoria, purge TTL
 │   ├── services/pdfService.js     # loadPdf, savePdf, reorderPages, deletePages, mergePdfs, extractPages
 │   ├── services/compressService.js
 │   ├── middleware/upload.js        # Multer (PDF only, límite configurable)
-│   └── middleware/errorHandler.js  # res.status(err.status).json(...)
+│   ├── middleware/errorHandler.js  # res.status(err.status).json(...)
+│   └── utils/validation.js         # hasPdfMagicBytes, isValidHexColor
 ├── client/
 │   ├── index.html                 # Shell HTML completo con todos los elementos del DOM
 │   ├── main.js                    # Estado global (AppState), event listeners, PDF.js
 │   ├── services/apiClient.js      # fetch wrapper para todos los endpoints
 │   ├── utils/pageRange.js         # re-export de shared
 │   ├── utils/thumbnailScale.js    # getSizeConfig, getScaleForWidth
+│   ├── utils/domUtils.js          # builders DOM seguros (reemplazan innerHTML) — FINDING-01/05
 │   └── styles/
 │       ├── tokens.css             # Variables CSS (--color-*, --space-*, --radius-*, etc.)
 │       └── global.css             # @import tailwindcss + @import tokens + clases BEM
@@ -106,9 +109,17 @@ npx vitest run --reporter=verbose   # ver cada test
 ```
 
 Tests existentes:
-- `src/shared/pageRange.test.js` — 12 casos (normales + errores)
-- `src/server/services/sessionService.test.js` — 7 casos
-- `src/client/utils/thumbnailScale.test.js` — 9 casos
+- `src/shared/pageRange.test.js`
+- `src/client/utils/thumbnailScale.test.js`
+- `src/client/utils/domUtils.test.js`
+- `src/server/services/sessionService.test.js`
+- `src/server/services/pdfService.test.js`
+- `src/server/services/compressService.test.js`
+- `src/server/utils/validation.test.js`
+- `src/server/routes/pdf.test.js`
+- `src/server/routes/pages.test.js`
+- `src/server/routes/tools.test.js`
+- `src/server/routes/security.test.js` — headers CSP, rate limiting, validaciones de la auditoría de seguridad
 
 ### E2E (Playwright)
 

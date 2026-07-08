@@ -3,6 +3,8 @@ import { uploadPdf, addPdf, reorderPages, deletePagesByIndex, exportPdf, compres
 import { parseRange } from './utils/pageRange.js'
 import { createToastElement, createHighlightedSnippet } from './utils/domUtils.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { PageAgent } from 'page-agent'
+
 
 // ── App State ────────────────────────────────────────────────
 const state = {
@@ -2180,7 +2182,7 @@ sigAutofirma.addEventListener('click', async () => {
     },
     (errorType, errorMessage, errorCode) => {
       if (errorType === '0' || errorType === 0 ||
-          errorType === 'es.gob.afirma.core.AOCancelledOperationException') {
+        errorType === 'es.gob.afirma.core.AOCancelledOperationException') {
         closeAutofirmaPanel()
         return
       }
@@ -2353,3 +2355,13 @@ document.addEventListener('keydown', e => {
 if (typeof AutoScript !== 'undefined') {
   AutoScript.cargarAppAfirma()
 }
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const agent = new PageAgent({
+    model: 'gemini-flash-latest',
+    baseURL: '/api/agent',
+    language: 'es-ES'
+  })
+  agent.panel.show()
+})

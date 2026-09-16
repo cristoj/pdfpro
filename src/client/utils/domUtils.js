@@ -15,29 +15,67 @@
  * @returns {HTMLSpanElement}
  */
 export function createHighlightedSnippet(snippet, query) {
-  const el = document.createElement('span')
-  el.className = 'search-result-snippet'
+ const el = document.createElement("span");
+ el.className = "search-result-snippet";
 
-  if (!query || !snippet) {
-    el.textContent = snippet ?? ''
-    return el
+ if (!query || !snippet) {
+  el.textContent = snippet ?? "";
+  return el;
+ }
+
+ // Escape regex metacharacters before building the split pattern
+ const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+ const parts = snippet.split(new RegExp(`(${escaped})`, "gi"));
+
+ for (const part of parts) {
+  if (part.toLowerCase() === query.toLowerCase()) {
+   const mark = document.createElement("mark");
+   mark.textContent = part; // safe: textContent never interprets HTML
+   el.appendChild(mark);
+  } else {
+   el.appendChild(document.createTextNode(part));
   }
+ }
 
-  // Escape regex metacharacters before building the split pattern
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const parts = snippet.split(new RegExp(`(${escaped})`, 'gi'))
+ return el;
+}
 
-  for (const part of parts) {
-    if (part.toLowerCase() === query.toLowerCase()) {
-      const mark = document.createElement('mark')
-      mark.textContent = part   // safe: textContent never interprets HTML
-      el.appendChild(mark)
-    } else {
-      el.appendChild(document.createTextNode(part))
-    }
-  }
+/**
+ * Build a page thumbnail shell without parsing HTML.
+ *
+ * @param {number} index
+ * @returns {HTMLDivElement}
+ */
+export function createThumbnailElement(index) {
+ const thumb = document.createElement("div");
+ thumb.className = "page-thumb";
+ thumb.dataset.index = index;
 
-  return el
+ const handle = document.createElement("span");
+ handle.className = "page-thumb-handle";
+ handle.title = "Arrastrar";
+ handle.textContent = "⠿";
+
+ const canvasWrapper = document.createElement("div");
+ canvasWrapper.className = "page-thumb-canvas-wrapper";
+ const canvas = document.createElement("canvas");
+ canvas.dataset.page = index + 1;
+ canvasWrapper.appendChild(canvas);
+
+ const checkboxWrapper = document.createElement("div");
+ checkboxWrapper.className = "page-thumb-checkbox-wrap";
+ const checkbox = document.createElement("input");
+ checkbox.type = "checkbox";
+ checkbox.className = "page-thumb-checkbox";
+ checkbox.dataset.index = index;
+ checkboxWrapper.appendChild(checkbox);
+
+ const pageIndex = document.createElement("div");
+ pageIndex.className = "page-thumb-index";
+ pageIndex.textContent = index + 1;
+
+ thumb.append(handle, canvasWrapper, checkboxWrapper, pageIndex);
+ return thumb;
 }
 
 /**
@@ -48,28 +86,28 @@ export function createHighlightedSnippet(snippet, query) {
  * @param {'info'|'success'|'error'} type
  * @returns {{ toast: HTMLDivElement, closeBtn: HTMLButtonElement }}
  */
-export function createToastElement(message, type = 'info') {
-  const toast = document.createElement('div')
-  toast.className = `toast toast--${type}`
+export function createToastElement(message, type = "info") {
+ const toast = document.createElement("div");
+ toast.className = `toast toast--${type}`;
 
-  const icon = type === 'error' ? '✕' : type === 'success' ? '✓' : 'ℹ'
+ const icon = type === "error" ? "✕" : type === "success" ? "✓" : "ℹ";
 
-  const iconEl = document.createElement('span')
-  iconEl.className = 'toast-icon'
-  iconEl.textContent = icon   // safe: emoji string, no HTML
+ const iconEl = document.createElement("span");
+ iconEl.className = "toast-icon";
+ iconEl.textContent = icon; // safe: emoji string, no HTML
 
-  const msgEl = document.createElement('span')
-  msgEl.className = 'toast-message'
-  msgEl.textContent = message  // safe: textContent does not interpret HTML
+ const msgEl = document.createElement("span");
+ msgEl.className = "toast-message";
+ msgEl.textContent = message; // safe: textContent does not interpret HTML
 
-  const closeBtn = document.createElement('button')
-  closeBtn.className = 'toast-close'
-  closeBtn.setAttribute('aria-label', 'Cerrar')
-  closeBtn.textContent = '✕'
+ const closeBtn = document.createElement("button");
+ closeBtn.className = "toast-close";
+ closeBtn.setAttribute("aria-label", "Cerrar");
+ closeBtn.textContent = "✕";
 
-  toast.appendChild(iconEl)
-  toast.appendChild(msgEl)
-  toast.appendChild(closeBtn)
+ toast.appendChild(iconEl);
+ toast.appendChild(msgEl);
+ toast.appendChild(closeBtn);
 
-  return { toast, closeBtn }
+ return { toast, closeBtn };
 }

@@ -1,6 +1,5 @@
 import {
   PDFDocument,
-  StandardFonts,
   rgb,
   PDFTextField,
   PDFCheckBox,
@@ -8,6 +7,41 @@ import {
   PDFRadioGroup,
 } from "pdf-lib";
 import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import fontkit from "@pdf-lib/fontkit";
+
+const FONT_DIRECTORY = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../public/fonts",
+);
+
+const NOTO_SANS_FONT_FILES = {
+  normal: "NotoSans-Regular.ttf",
+  bold: "NotoSans-Bold.ttf",
+  italic: "NotoSans-Italic.ttf",
+  boldItalic: "NotoSans-BoldItalic.ttf",
+};
+
+let notoSansFontBytes;
+
+async function loadNotoSansFontBytes() {
+  if (!notoSansFontBytes) {
+    notoSansFontBytes = Promise.all(
+      Object.entries(NOTO_SANS_FONT_FILES).map(async ([style, filename]) => {
+        try {
+          return [style, await fs.readFile(path.join(FONT_DIRECTORY, filename))];
+        } catch (cause) {
+          throw new Error(
+            `Required Noto Sans font asset is unavailable: ${filename}`,
+            { cause },
+          );
+        }
+      }),
+    ).then((entries) => new Map(entries));
+  }
+  return notoSansFontBytes;
+}
 
 function hexToRgb(hex = "#000000") {
   const h = hex.replace("#", "");
@@ -73,38 +107,25 @@ export async function extractPages(doc, pageIndices) {
   return newDoc;
 }
 
-const FONT_MAP = {
-  Helvetica: {
-    normal: StandardFonts.Helvetica,
-    bold: StandardFonts.HelveticaBold,
-    italic: StandardFonts.HelveticaOblique,
-    boldItalic: StandardFonts.HelveticaBoldOblique,
-  },
-  Courier: {
-    normal: StandardFonts.Courier,
-    bold: StandardFonts.CourierBold,
-    italic: StandardFonts.CourierOblique,
-    boldItalic: StandardFonts.CourierBoldOblique,
-  },
-};
+function notoSansStyle(bold, italic) {
+  if (bold && italic) return "boldItalic";
+  if (bold) return "bold";
+  if (italic) return "italic";
+  return "normal";
+}
 
 export async function applyTextBlocks(doc, textBlocks) {
   if (!textBlocks?.length) return doc;
   const cache = new Map();
+  const fontBytes = await loadNotoSansFontBytes();
+  doc.registerFontkit(fontkit);
 
-  async function font(family, bold, italic) {
-    const map = FONT_MAP[family] ?? FONT_MAP.Helvetica;
-    const key =
-      bold && italic
-        ? "boldItalic"
-        : bold
-          ? "bold"
-          : italic
-            ? "italic"
-            : "normal";
-    const name = map[key];
-    if (!cache.has(name)) cache.set(name, await doc.embedFont(name));
-    return cache.get(name);
+  async function font(_family, bold, italic) {
+    const style = notoSansStyle(bold, italic);
+    if (!cache.has(style)) {
+      cache.set(style, await doc.embedFont(fontBytes.get(style)));
+    }
+    return cache.get(style);
   }
 
   const pages = doc.getPages();

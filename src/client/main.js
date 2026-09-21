@@ -30,6 +30,11 @@ import {
   createThumbnailElement,
 } from "./utils/domUtils.js";
 import { serializeContentEditableText } from "./utils/contentEditableText.js";
+import {
+  pdfToTextOverlayCoordinates,
+  textLayerClickToPdfCoordinates,
+  textOverlayToPdfCoordinates,
+} from "./utils/textCoordinates.js";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 // ── App State ────────────────────────────────────────────────
@@ -1442,26 +1447,27 @@ shapeStrokeWidthInput.addEventListener("change", () => {
 
 // ── Text overlay ──────────────────────────────────────────────
 const CSS_FONTS = {
-  Helvetica: "'Geist Sans', Helvetica, Arial, sans-serif",
-  Courier: "'JetBrains Mono', 'Courier New', monospace",
+  Helvetica: "'PDFPro Noto Sans'",
+  Courier: "'PDFPro Noto Sans'",
 };
 
-function pdfCoordsToOverlay(x, y) {
+function textCoordinateGeometry(
+  fontSize = state.typography.fontSize,
+  fontFamily = state.typography.fontFamily,
+) {
   return {
-    left: x * state.zoom,
-    top: (state.pageHeightPt - y) * state.zoom,
-  };
-}
-
-function overlayCoordsToPdf(left, top) {
-  return {
-    x: left / state.zoom,
-    y: state.pageHeightPt - top / state.zoom,
+    pageHeightPt: state.pageHeightPt,
+    zoom: state.zoom,
+    fontSize,
+    fontFamily,
   };
 }
 
 function blockCssStyle(block) {
-  const { left, top } = pdfCoordsToOverlay(block.x, block.y);
+  const { left, top } = pdfToTextOverlayCoordinates(
+    block,
+    textCoordinateGeometry(block.fontSize, block.fontFamily),
+  );
   const fontFamily = CSS_FONTS[block.fontFamily] ?? CSS_FONTS.Helvetica;
   const color = block.color ?? "#000000";
   return `left:${left}px;top:${top}px;font-size:${block.fontSize * state.zoom}px;font-family:${fontFamily};font-weight:${block.bold ? 700 : 400};font-style:${block.italic ? "italic" : "normal"};color:${color};`;
@@ -1542,9 +1548,12 @@ function createBlockElement(block) {
       el.classList.remove("text-block--dragging");
 
       if (dragging) {
-        const { x, y } = overlayCoordsToPdf(
-          parseFloat(el.style.left),
-          parseFloat(el.style.top),
+        const { x, y } = textOverlayToPdfCoordinates(
+          {
+            left: parseFloat(el.style.left),
+            top: parseFloat(el.style.top),
+          },
+          textCoordinateGeometry(block.fontSize, block.fontFamily),
         );
         block.x = x;
         block.y = y;
@@ -2154,7 +2163,13 @@ textLayer.addEventListener("click", async (e) => {
   const rect = textLayer.getBoundingClientRect();
   const overlayX = e.clientX - rect.left;
   const overlayY = e.clientY - rect.top;
-  const { x, y } = overlayCoordsToPdf(overlayX, overlayY);
+  const { x, y } = textLayerClickToPdfCoordinates(
+    { left: overlayX, top: overlayY },
+    textCoordinateGeometry(
+      state.typography.fontSize,
+      state.typography.fontFamily,
+    ),
+  );
 
   const tempId = `tmp-${Date.now()}`;
   const block = {

@@ -2,6 +2,43 @@
 
 @import "./tokens.css";
 
+@font-face {
+  font-family: "PDFPro Noto Sans";
+  src: url("/fonts/NotoSans-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "PDFPro Noto Sans";
+  src: url("/fonts/NotoSans-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "PDFPro Noto Sans";
+  src: url("/fonts/NotoSans-Italic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "PDFPro Noto Sans";
+  src: url("/fonts/NotoSans-BoldItalic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+}
+
+:root {
+  --font-sans: "PDFPro Noto Sans";
+  --font-mono: "PDFPro Noto Sans";
+}
+
 /* ── Base ─────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -661,8 +698,10 @@ html, body {
 
 .text-block {
   position: absolute;
-  padding: 2px 4px;
-  border: 1.5px dashed transparent;
+  padding: 0;
+  border: none;
+  outline: 2px dashed transparent;
+  outline-offset: 1px;
   border-radius: 2px;
   cursor: default;
   pointer-events: auto;
@@ -671,7 +710,7 @@ html, body {
   min-width: 20px;
   min-height: 10px;
   color: #000;
-  line-height: normal;
+  line-height: 1.2;
 }
 
 .color-picker-label {
@@ -698,16 +737,16 @@ html, body {
   cursor: grabbing !important;
   opacity: 0.85;
   box-shadow: var(--shadow-md);
-  border-color: var(--color-accent);
+  outline-color: var(--color-accent);
   user-select: none;
 }
 
 .text-block:hover {
-  border-color: var(--color-accent);
+  outline-color: var(--color-accent);
 }
 
 .text-block--selected {
-  border-color: var(--color-accent);
+  outline-color: var(--color-accent);
   box-shadow: 0 0 0 2px var(--color-accent-subtle);
 }
 
@@ -822,7 +861,6 @@ html, body {
 #pdf-canvas {
   box-shadow: var(--shadow-xl);
   border-radius: 2px;
-  max-width: 100%;
 }
 
 /* Viewer controls */

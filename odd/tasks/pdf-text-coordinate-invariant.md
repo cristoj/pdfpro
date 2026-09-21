@@ -26,6 +26,10 @@ Keep persisted text-block coordinates in PDF points with a bottom-left origin re
 ## Residual shared-font alignment
 - [x] Remove the editor block's 2px/4px content inset after a regression test proves it is the remaining same-font preview/export offset; retain selection affordance with a non-layout outline. Browser regression confirms 0px horizontal/vertical content inset.
 
+## Delivery evidence
+- Commit: `0751f6c` (`fix(pdf): align editor and export text`)
+- Verification before delivery: 54 focused Vitest tests, 11 Chromium E2E tests, `npm run build`, and `git diff --check` passed.
+
 ## Constraints
 - Do not modify `README.md`; its current change is pre-existing.
 - `odd/` is intentional tracking.

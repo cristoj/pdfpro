@@ -5,7 +5,7 @@ Aplicación web de edición PDF estilo Adobe Acrobat, sin login, construida con 
 ## Stack
 
 | Capa | Tecnología |
-|---|---|
+| --- | --- |
 | Runtime | Node.js 22 |
 | Backend | Express 5 |
 | Upload | Multer |
@@ -22,7 +22,6 @@ Aplicación web de edición PDF estilo Adobe Acrobat, sin login, construida con 
 - Node.js >= 22
 - npm >= 10
 
-
 ## Funcionalidades
 
 - **Importar PDF** — drag & drop o selector de archivo
@@ -37,7 +36,6 @@ Aplicación web de edición PDF estilo Adobe Acrobat, sin login, construida con 
 - **Búsqueda** — CMD+K abre panel de búsqueda de texto
 - **Dark mode** — toggle con persistencia en localStorage
 - **Responsive mobile** — banner de aviso de diseño escritorio, sidebar overlay (≤768px), bottom sheet de herramientas
-
 
 ## Instalación
 
@@ -60,6 +58,10 @@ Arranca el servidor Express en `http://localhost:3000` y el cliente Vite en `htt
 npm run build
 npm run preview
 ```
+
+## Despliegue
+
+La aplicación está publicada en [pdf.upthemedia.com](https://pdf.upthemedia.com) mediante Vercel. Cada `push` o merge a la rama `main` dispara una actualización automática del despliegue.
 
 ## Tests
 
@@ -140,7 +142,7 @@ POST   /api/pdf/export              # { sessionId, range?: "1,3-5" } → PDF
 ## Variables de entorno
 
 | Variable | Default | Descripción |
-|---|---|---|
+| --- | --- | --- |
 | `PORT` | `3000` | Puerto del servidor Express |
 | `SESSION_TTL_MS` | `3600000` | TTL de sesiones en ms (1 hora) |
 | `UPLOAD_DIR` | `uploads` | Directorio para archivos temporales |

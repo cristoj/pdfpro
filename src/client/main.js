@@ -44,7 +44,7 @@ const state = {
   currentPage: 1,
   totalPages: 0,
   zoom: 1.0,
-  viewMode: "continuous",
+  viewMode: "page",
   thumbnailSize: "md",
   darkMode: localStorage.getItem("pdfpro_dark") === "true",
   selection: [],
